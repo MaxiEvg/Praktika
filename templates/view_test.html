@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>{{ test.title }}</h1>
+        <p>{{ test.description }}</p>
+        
+        <div class="mb-4">
+            <a href="{{ url_for('edit_test', test_id=test.id) }}" class="btn btn-warning">Редактировать тест</a>
+            <a href="{{ url_for('home') }}" class="btn btn-secondary">Вернуться на главную</a>
+        </div>
+        
+        <h2>Вопросы:</h2>
+        {% if test.questions %}
+            {% for question in test.questions %}
+                <div class="question-card">
+                    <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
+                    
+                    {% if question.image %}
+                        <img src="{{ question.image }}" alt="Изображение к вопросу" class="question-image">
+                    {% endif %}
+                    
+                    <h5>Варианты ответов:</h5>
+                    <ul class="list-group">
+                        {% for answer in question.answers %}
+                            <li class="list-group-item {% if answer.is_correct %}correct-answer{% endif %}">
+                                <strong>{{ answer.label }})</strong> {{ answer.text }} 
+                                {% if answer.is_correct %}<span class="badge bg-success">Правильный</span>{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>У теста пока нет вопросов.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
