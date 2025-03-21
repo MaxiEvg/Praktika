@@ -1,0 +1,113 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <h1>Редактирование вопроса</h1>
+        
+        <form action="{{ url_for('edit_question', question_id=question.id) }}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="question_text" class="form-label">Текст вопроса</label>
+                <textarea class="form-control" id="question_text" name="question_text" rows="3" required>{{ question.text }}</textarea>
+            </div>
+            
+            <div class="mb-3">
+                {% if question.image %}
+                    <div class="mb-2">
+                        <label class="form-label">Текущее изображение:</label>
+                        <img src="{{ question.image }}" alt="Изображение к вопросу" class="question-image d-block" style="max-height: 200px;">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="yes">
+                            <label class="form-check-label" for="remove_image">Удалить изображение</label>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <label for="question_image" class="form-label">Изображение к вопросу (опционально)</label>
+                <input type="file" class="form-control" id="question_image" name="question_image" accept="image/*">
+                <small class="text-muted">Загрузите новое изображение, чтобы заменить существующее</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Количество вариантов ответа</label>
+                <select class="form-select" id="answer_count" name="answer_count">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" {% if question.answers|length == 4 %}selected{% endif %}>4</option>
+                    <option value="5" {% if question.answers|length == 5 %}selected{% endif %}>5</option>
+                    <option value="6" {% if question.answers|length == 6 %}selected{% endif %}>6</option>
+                </select>
+            </div>
+            
+            <div id="answers_container">
+                <!-- Контейнер для вариантов ответа -->
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                <a href="{{ url_for('edit_test', test_id=test_id) }}" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Инициализация с текущими ответами
+        updateAnswersFields();
+        
+        document.getElementById('answer_count').addEventListener('change', function() {
+            updateAnswersFields();
+        });
+        
+        function updateAnswersFields() {
+            const count = parseInt(document.getElementById('answer_count').value);
+            const container = document.getElementById('answers_container');
+            container.innerHTML = '';
+            
+            // Получаем существующие ответы для этого вопроса
+            const answers = [
+                {% for answer in question.answers %}
+                {
+                    label: "{{ answer.label }}",
+                    text: "{{ answer.text }}",
+                    isCorrect: {{ 'true' if answer.is_correct else 'false' }}
+                },
+                {% endfor %}
+            ];
+            
+            for (let i = 0; i < count; i++) {
+                const letter = String.fromCharCode(97 + i); // a, b, c, d...
+                const existingAnswer = i < answers.length ? answers[i] : null;
+                
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'answer-item border p-3 mb-3';
+                
+                answerDiv.innerHTML = `
+                    <div class="mb-2">
+                        <label class="form-label">Метка ответа (по умолчанию ${letter})</label>
+                        <input type="text" class="form-control" name="answer_label[]" placeholder="${letter}" 
+                            value="${existingAnswer ? existingAnswer.label : ''}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Текст ответа</label>
+                        <input type="text" class="form-control" name="answer_text[]"
+                            value="${existingAnswer ? existingAnswer.text : ''}">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${i}" name="is_correct[]" id="is_correct_${i}"
+                            ${existingAnswer && existingAnswer.isCorrect ? 'checked' : ''}>
+                        <label class="form-check-label" for="is_correct_${i}">
+                            Это правильный ответ
+                        </label>
+                    </div>
+                `;
+                
+                container.appendChild(answerDiv);
+            }
+        }
+    });
+</script>
+{% endblock %} 
