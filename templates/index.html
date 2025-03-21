@@ -1,9 +1,14 @@
-{% extends 'base.html' %}
+{% extends 'layout.html' %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-12">
-        <h1>Система тестирования</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Система тестирования</h1>
+            <div>
+                <span>Пользователь: <strong>{{ current_user.username }}</strong></span>
+            </div>
+        </div>
         <p>Добро пожаловать в систему создания и управления тестами.</p>
         <a href="{{ url_for('create_test') }}" class="btn btn-primary mb-4">Создать новый тест</a>
         
@@ -17,6 +22,7 @@
                                 <h5 class="card-title">{{ test.title }}</h5>
                                 <p class="card-text">{{ test.description }}</p>
                                 <p class="text-muted">Создан: {{ test.created_at.strftime('%d.%m.%Y') }}</p>
+                                <p class="text-muted">Автор: {{ test.author.username }}</p>
                                 <div class="d-flex justify-content-between">
                                     <a href="{{ url_for('view_test', test_id=test.id) }}" class="btn btn-info">Просмотр</a>
                                     <a href="{{ url_for('edit_test', test_id=test.id) }}" class="btn btn-warning">Редактировать</a>
