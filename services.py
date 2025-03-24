@@ -1,7 +1,10 @@
-from BaseData import db, Test, Question, Answer, User
+from BaseData import db, Test, Question, Answer, User, Article, ArticleFile
 import base64
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, current_user
+import os
+from werkzeug.utils import secure_filename
+import mimetypes
 
 def get_all_tests():
     """Получить все тесты"""
@@ -134,4 +137,104 @@ def login_user_func(username, password):
         return False, "Неверное имя пользователя или пароль"
     
     login_user(user)
-    return True, "Авторизация успешна" 
+    return True, "Авторизация успешна"
+
+def get_all_articles():
+    """Получить все статьи"""
+    return Article.query.order_by(Article.created_at.desc()).all()
+
+def get_article_by_id(article_id):
+    """Получить статью по ID"""
+    return Article.query.get_or_404(article_id)
+
+def create_article(title, content, files=None):
+    """Создать новую статью с прикрепленными файлами"""
+    new_article = Article(title=title, content=content, user_id=current_user.id)
+    db.session.add(new_article)
+    db.session.commit()
+    
+    # Обработка файлов, если они есть
+    if files:
+        for file in files:
+            if file and file.filename:
+                # Сохраняем файл
+                add_file_to_article(new_article.id, file)
+    
+    return new_article
+
+def update_article(article_id, title, content, files=None):
+    """Обновить существующую статью"""
+    article = get_article_by_id(article_id)
+    
+    # Проверка прав доступа
+    if article.user_id != current_user.id and current_user.id != 1:
+        return False, "У вас нет прав для редактирования этой статьи"
+    
+    article.title = title
+    article.content = content
+    
+    # Обработка файлов, если они есть
+    if files:
+        for file in files:
+            if file and file.filename:
+                # Сохраняем файл
+                add_file_to_article(article.id, file)
+    
+    db.session.commit()
+    return True, "Статья успешно обновлена"
+
+def delete_article(article_id):
+    """Удалить статью"""
+    article = get_article_by_id(article_id)
+    
+    # Проверка прав доступа
+    if article.user_id != current_user.id and current_user.id != 1:
+        return False, "У вас нет прав для удаления этой статьи"
+    
+    db.session.delete(article)
+    db.session.commit()
+    return True, "Статья успешно удалена"
+
+def add_file_to_article(article_id, file):
+    """Добавить файл к статье"""
+    # Определение типа файла
+    filename = secure_filename(file.filename)
+    file_mime = file.content_type if hasattr(file, 'content_type') else mimetypes.guess_type(filename)[0]
+    
+    # Определение категории файла
+    file_type = 'document'
+    if file_mime:
+        if file_mime.startswith('image/'):
+            file_type = 'image'
+        elif file_mime.startswith('video/'):
+            file_type = 'video'
+    
+    # Кодирование файла в base64
+    file_binary = file.read()
+    file_base64 = base64.b64encode(file_binary).decode('utf-8')
+    file_data = f"data:{file_mime};base64,{file_base64}"
+    
+    # Создание записи в БД
+    new_file = ArticleFile(
+        filename=filename,
+        file_data=file_data,
+        file_type=file_type,
+        article_id=article_id
+    )
+    
+    db.session.add(new_file)
+    db.session.commit()
+    return new_file
+
+def delete_file_from_article(file_id):
+    """Удалить файл из статьи"""
+    file = ArticleFile.query.get_or_404(file_id)
+    article = file.article
+    
+    # Проверка прав доступа
+    if article.user_id != current_user.id and current_user.id != 1:
+        return False, "У вас нет прав для удаления этого файла"
+    
+    db.session.delete(file)
+    db.session.commit()
+    return True, "Файл успешно удален" 

@@ -11,6 +11,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     tests = db.relationship('Test', backref='author', lazy=True)
+    articles = db.relationship('Article', backref='author', lazy=True)
 
 class Test(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,4 +33,20 @@ class Answer(db.Model):
     label = db.Column(db.String(50), nullable=False, default='')  # a, b, c или пользовательский текст
     text = db.Column(db.Text, nullable=False)
     is_correct = db.Column(db.Boolean, default=False)
-    question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False) 
+    question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False)
+
+class Article(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    files = db.relationship('ArticleFile', backref='article', lazy=True, cascade='all, delete-orphan')
+
+class ArticleFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_data = db.Column(db.Text, nullable=False)  # base64 encoded file data
+    file_type = db.Column(db.String(50), nullable=False)  # image, video, document
+    article_id = db.Column(db.Integer, db.ForeignKey('article.id'), nullable=False) 

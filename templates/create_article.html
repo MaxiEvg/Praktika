@@ -1,0 +1,295 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('articles') }}">Статьи</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Создание статьи</li>
+            </ol>
+        </nav>
+        
+        <h1>Создание новой статьи</h1>
+        <p class="mb-4">Заполните форму для создания новой статьи.</p>
+        
+        <form method="post" enctype="multipart/form-data" id="articleForm">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название статьи</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="content" class="form-label fw-bold">Содержание статьи</label>
+                        <div class="alert alert-info small">
+                            <strong><i class="bi bi-info-circle me-2"></i>Подсказка:</strong>
+                            <p class="mb-1">Для создания содержания статьи, используйте заголовки в одном из форматов:</p>
+                            <ul class="mb-0">
+                                <li>В стиле Markdown: <code># Заголовок 1</code>, <code>## Заголовок 2</code> и т.д.</li>
+                                <li>Выделение жирным: <code>*Заголовок раздела*</code> (весь текст строки)</li>
+                            </ul>
+                            <p class="mt-2 mb-0">Заголовки будут автоматически добавлены в содержание статьи.</p>
+                        </div>
+                        <textarea class="form-control" id="content" name="content" rows="15" required>{{ article.content if article else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Материалы статьи</h5>
+                    <button type="button" class="btn btn-primary btn-sm" id="addFileBtn">
+                        <i class="bi bi-plus-circle me-1"></i> Добавить файл
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="text-muted">Вы можете прикрепить изображения, видео или документы к вашей статье.</p>
+                        <div id="filesContainer" class="row">
+                            <!-- Здесь будут отображаться загруженные файлы -->
+                        </div>
+                        
+                        <!-- Скрытый input для старой версии загрузки (для совместимости) -->
+                        <input type="file" class="d-none" id="files" name="files" multiple>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('articles') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle me-1"></i> Отмена
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i> Создать статью
+                </button>
+            </div>
+        </form>
+        
+        <!-- Модальное окно для добавления файла -->
+        <div class="modal fade" id="addFileModal" tabindex="-1" aria-labelledby="addFileModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addFileModalLabel">Добавить файл</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="fileUpload" class="form-label">Выберите файл для загрузки</label>
+                            <input class="form-control" type="file" id="fileUpload">
+                            <div class="form-text">Поддерживаются изображения, видео и документы.</div>
+                        </div>
+                        <div id="filePreview" class="text-center my-3 d-none">
+                            <h6>Предпросмотр:</h6>
+                            <div id="previewContent"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="button" class="btn btn-primary" id="uploadFileBtn" disabled>Загрузить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Инициализация модального окна
+    const addFileModal = new bootstrap.Modal(document.getElementById('addFileModal'));
+    let tempFiles = []; // Временное хранилище для загруженных файлов
+    
+    // Открыть модальное окно при нажатии на кнопку "Добавить файл"
+    document.getElementById('addFileBtn').addEventListener('click', function() {
+        document.getElementById('fileUpload').value = '';
+        document.getElementById('filePreview').classList.add('d-none');
+        document.getElementById('previewContent').innerHTML = '';
+        document.getElementById('uploadFileBtn').disabled = true;
+        addFileModal.show();
+    });
+    
+    // Предпросмотр выбранного файла
+    document.getElementById('fileUpload').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            document.getElementById('filePreview').classList.add('d-none');
+            document.getElementById('uploadFileBtn').disabled = true;
+            return;
+        }
+        
+        document.getElementById('uploadFileBtn').disabled = false;
+        const previewContent = document.getElementById('previewContent');
+        previewContent.innerHTML = '';
+        
+        if (file.type.startsWith('image/')) {
+            // Предпросмотр изображения
+            const img = document.createElement('img');
+            img.className = 'img-fluid';
+            img.style.maxHeight = '200px';
+            img.src = URL.createObjectURL(file);
+            previewContent.appendChild(img);
+        } else if (file.type.startsWith('video/')) {
+            // Иконка видео
+            const videoIcon = document.createElement('div');
+            videoIcon.innerHTML = `
+                <i class="bi bi-camera-video text-primary" style="font-size: 4rem;"></i>
+                <p class="mt-2">${file.name}</p>
+            `;
+            previewContent.appendChild(videoIcon);
+        } else {
+            // Иконка документа
+            const docIcon = document.createElement('div');
+            docIcon.innerHTML = `
+                <i class="bi bi-file-earmark-text text-primary" style="font-size: 4rem;"></i>
+                <p class="mt-2">${file.name}</p>
+            `;
+            previewContent.appendChild(docIcon);
+        }
+        
+        document.getElementById('filePreview').classList.remove('d-none');
+    });
+    
+    // При отправке формы добавляем временные файлы к FormData
+    document.getElementById('articleForm').addEventListener('submit', function(event) {
+        // Если есть временные файлы, добавляем их к форме
+        tempFiles.forEach((file, index) => {
+            // Создаем скрытый input для каждого файла
+            const fileInput = document.createElement('input');
+            fileInput.type = 'hidden';
+            fileInput.name = `file_${index}`;
+            fileInput.value = file.id; // ID файла для сервера
+            this.appendChild(fileInput);
+        });
+    });
+    
+    // Отобразить загруженный файл после создания статьи
+    function displayFile(file) {
+        const filesContainer = document.getElementById('filesContainer');
+        
+        const col = document.createElement('div');
+        col.className = 'col-md-3 mb-3';
+        col.dataset.fileId = file.id;
+        
+        const card = document.createElement('div');
+        card.className = 'card h-100 shadow-sm';
+        
+        let cardContent = '';
+        
+        if (file.type === 'image') {
+            cardContent = `
+                <div class="position-relative">
+                    <img src="${file.data}" class="card-img-top" alt="${file.name}" style="max-height: 150px; object-fit: cover;">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="badge bg-primary">Изображение</span>
+                    </div>
+                </div>
+            `;
+        } else if (file.type === 'video') {
+            cardContent = `
+                <div class="position-relative">
+                    <div class="d-flex justify-content-center align-items-center bg-light" style="height: 150px;">
+                        <i class="bi bi-camera-video text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="badge bg-success">Видео</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            cardContent = `
+                <div class="position-relative">
+                    <div class="d-flex justify-content-center align-items-center bg-light" style="height: 150px;">
+                        <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="badge bg-secondary">Документ</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        cardContent += `
+            <div class="card-body d-flex flex-column">
+                <p class="card-text small text-truncate mb-2">${file.name}</p>
+                <div class="mt-auto">
+                    <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-file-btn" data-file-id="${file.id}">
+                        <i class="bi bi-trash me-1"></i> Удалить
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        card.innerHTML = cardContent;
+        col.appendChild(card);
+        filesContainer.appendChild(col);
+        
+        // Добавляем обработчик для кнопки удаления
+        col.querySelector('.remove-file-btn').addEventListener('click', function() {
+            const fileId = this.dataset.fileId;
+            tempFiles = tempFiles.filter(f => f.id !== fileId);
+            col.remove();
+        });
+    }
+    
+    // Обработка нажатия на кнопку загрузки файла
+    document.getElementById('uploadFileBtn').addEventListener('click', function() {
+        const fileInput = document.getElementById('fileUpload');
+        const file = fileInput.files[0];
+        
+        if (!file) return;
+        
+        // В режиме создания статьи мы просто добавляем файл во временное хранилище
+        // для последующей отправки при сохранении статьи
+        const fileId = 'temp_' + Date.now();
+        const fileType = file.type.startsWith('image/') ? 'image' : 
+                        file.type.startsWith('video/') ? 'video' : 'document';
+        
+        // Создаем объект для временного хранения
+        const tempFile = {
+            id: fileId,
+            name: file.name,
+            type: fileType,
+            file: file
+        };
+        
+        // Если это изображение, создаем data URL для отображения
+        if (fileType === 'image') {
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                tempFile.data = reader.result;
+                tempFiles.push(tempFile);
+                displayFile(tempFile);
+                addFileModal.hide();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            tempFiles.push(tempFile);
+            displayFile(tempFile);
+            addFileModal.hide();
+        }
+    });
+    
+    // Функция для форматирования текста в поле ввода
+    function applyFormatting(textArea, markup, placeholder) {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const selectedText = textArea.value.substring(start, end);
+        const beforeText = textArea.value.substring(0, start);
+        const afterText = textArea.value.substring(end);
+        
+        if (selectedText) {
+            textArea.value = beforeText + markup + selectedText + markup + afterText;
+        } else {
+            textArea.value = beforeText + markup + placeholder + markup + afterText;
+            textArea.setSelectionRange(start + markup.length, start + markup.length + placeholder.length);
+        }
+        
+        textArea.focus();
+    }
+</script>
+{% endblock %} 
