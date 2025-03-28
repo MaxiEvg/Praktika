@@ -1,175 +1,167 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-10">
-        <h1>Редактирование теста: {{ test.title }}</h1>
-        <p>{{ test.description }}</p>
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5>Добавить новый вопрос</h5>
-            </div>
-            <div class="card-body">
-                <form action="{{ url_for('add_question', test_id=test.id) }}" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="question_text" class="form-label">Текст вопроса</label>
-                        <textarea class="form-control" id="question_text" name="question_text" rows="2" required></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="question_image" class="form-label">Изображение к вопросу (опционально)</label>
-                        <input type="file" class="form-control" id="question_image" name="question_image" accept="image/*">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Количество вариантов ответа</label>
-                        <select class="form-select" id="answer_count" name="answer_count">
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4" selected>4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                        </select>
-                    </div>
-                    
-                    <div id="answers_container">
-                        <!-- Контейнер для вариантов ответа -->
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">Добавить вопрос</button>
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Редактирование теста: {{ test.title }}</h1>
+            <div>
+                <a href="/view_test/{{ test.id }}" class="btn btn-outline-primary me-2">Предпросмотр</a>
+                <form method="post" action="/delete_test/{{ test.id }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите удалить этот тест?')">Удалить тест</button>
                 </form>
             </div>
         </div>
         
-        <h3>Существующие вопросы</h3>
-        {% if test.questions %}
-            {% for question in test.questions %}
-                <div id="question-{{ question.id }}" class="question-card">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
-                        <div>
-                            <a href="{{ url_for('edit_question', question_id=question.id) }}" class="btn btn-warning btn-sm">Редактировать</a>
-                            <form action="{{ url_for('delete_question', question_id=question.id) }}" method="post" class="d-inline" 
-                                  onsubmit="return confirm('Вы уверены, что хотите удалить этот вопрос?');">
-                                <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Основная информация</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/create_test">
+                    <input type="hidden" name="test_id" value="{{ test.id }}">
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название теста</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ test.title }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание теста</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ test.description }}</textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Обновить информацию</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Вопросы ({{ test.questions|length }})</h3>
+                <button type="button" class="btn btn-success" data-bs-toggle="collapse" data-bs-target="#addQuestionForm">
+                    Добавить вопрос
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="collapse mb-4" id="addQuestionForm">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h4>Новый вопрос</h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="/add_question/{{ test.id }}" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="question_text" class="form-label">Текст вопроса</label>
+                                    <input type="text" class="form-control" id="question_text" name="question_text" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="question_image" class="form-label">Изображение (необязательно)</label>
+                                    <input type="file" class="form-control" id="question_image" name="question_image">
+                                </div>
+                                
+                                <input type="hidden" name="answer_count" id="answer_count" value="2">
+                                
+                                <div id="answers-container">
+                                    <label class="form-label">Варианты ответов</label>
+                                    
+                                    <div class="answer-item mb-2">
+                                        <div class="input-group">
+                                            <div class="input-group-text">
+                                                <input type="radio" name="is_correct" value="0" checked required>
+                                            </div>
+                                            <input type="text" class="form-control" name="answer_label" value="A" readonly style="max-width: 60px;">
+                                            <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="answer-item mb-2">
+                                        <div class="input-group">
+                                            <div class="input-group-text">
+                                                <input type="radio" name="is_correct" value="1" required>
+                                            </div>
+                                            <input type="text" class="form-control" name="answer_label" value="B" readonly style="max-width: 60px;">
+                                            <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 mb-3" id="add-answer-btn">
+                                    Добавить вариант ответа
+                                </button>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Добавить вопрос</button>
+                                </div>
                             </form>
                         </div>
                     </div>
-                    
-                    {% if question.image %}
-                        <img src="{{ question.image }}" alt="Изображение к вопросу" class="question-image">
-                    {% endif %}
-                    
-                    <h5>Варианты ответов:</h5>
-                    <ul class="list-group">
-                        {% for answer in question.answers %}
-                            <li class="list-group-item {% if answer.is_correct %}correct-answer{% endif %}">
-                                <strong>{{ answer.label }})</strong> {{ answer.text }} 
-                                {% if answer.is_correct %}<span class="badge bg-success">Правильный</span>{% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p>У теста пока нет вопросов.</p>
-        {% endif %}
-        
-        <div class="mt-4">
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Вернуться на главную</a>
-        </div>
-    </div>
-    
-    <!-- Боковая навигация по вопросам -->
-    {% if test.questions %}
-    <div class="col-md-2">
-        <div class="question-navigation">
-            <div class="question-nav-header">Список вопросов</div>
-            <div class="question-nav-list">
-                {% for question in test.questions %}
-                    <a href="#question-{{ question.id }}" class="question-nav-item" data-question-id="{{ question.id }}">
-                        Вопрос {{ loop.index }}
-                    </a>
-                {% endfor %}
+                
+                {% if test.questions %}
+                    {% for question in test.questions %}
+                        <div class="question-card">
+                            <div class="d-flex justify-content-between">
+                                <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
+                                <div>
+                                    <a href="/edit_question/{{ question.id }}" class="btn btn-sm btn-outline-primary me-1">Редактировать</a>
+                                    <form method="post" action="/delete_question/{{ question.id }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Вы уверены, что хотите удалить этот вопрос?')">Удалить</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            {% if question.image_data %}
+                                <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
+                            {% endif %}
+                            
+                            <div class="list-group mt-2">
+                                {% for answer in question.answers %}
+                                    <div class="list-group-item {% if answer.is_correct %}correct-answer{% endif %}">
+                                        {{ answer.label }}. {{ answer.text }} {% if answer.is_correct %}<span class="badge bg-success">Правильный ответ</span>{% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">У этого теста пока нет вопросов. Добавьте первый вопрос!</div>
+                {% endif %}
             </div>
         </div>
     </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        updateAnswersFields();
-        
-        document.getElementById('answer_count').addEventListener('change', function() {
-            updateAnswersFields();
-        });
-        
-        function updateAnswersFields() {
-            const count = parseInt(document.getElementById('answer_count').value);
-            const container = document.getElementById('answers_container');
-            container.innerHTML = '';
-            
-            for (let i = 0; i < count; i++) {
-                const letter = String.fromCharCode(97 + i); // a, b, c, d...
-                
-                const answerDiv = document.createElement('div');
-                answerDiv.className = 'answer-item border p-3 mb-3';
-                
-                answerDiv.innerHTML = `
-                    <div class="mb-2">
-                        <label class="form-label">Метка ответа (по умолчанию ${letter})</label>
-                        <input type="text" class="form-control" name="answer_label[]" placeholder="${letter}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Текст ответа</label>
-                        <input type="text" class="form-control" name="answer_text[]">
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${i}" name="is_correct[]" id="is_correct_${i}">
-                        <label class="form-check-label" for="is_correct_${i}">
-                            Это правильный ответ
-                        </label>
-                    </div>
-                `;
-                
-                container.appendChild(answerDiv);
-            }
+    let answerCount = 2;
+    const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    
+    document.getElementById('add-answer-btn').addEventListener('click', function() {
+        if (answerCount >= 10) {
+            alert('Максимальное количество вариантов ответа - 10');
+            return;
         }
         
-        // Новый код для плавной прокрутки к вопросам
-        const navLinks = document.querySelectorAll('.question-nav-item');
-        navLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const questionId = this.getAttribute('href');
-                const questionElement = document.querySelector(questionId);
-                
-                // Плавная прокрутка к вопросу
-                questionElement.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-                
-                // Подсветка вопроса на короткое время
-                questionElement.classList.add('highlight-question');
-                setTimeout(() => {
-                    questionElement.classList.remove('highlight-question');
-                }, 2000);
-                
-                // Выделение активного элемента в навигации
-                navLinks.forEach(item => item.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
+        const container = document.getElementById('answers-container');
+        const answerItem = document.createElement('div');
+        answerItem.className = 'answer-item mb-2';
         
-        // Если есть вопросы, делаем первый элемент навигации активным по умолчанию
-        if (navLinks.length > 0) {
-            navLinks[0].classList.add('active');
-        }
+        answerItem.innerHTML = `
+            <div class="input-group">
+                <div class="input-group-text">
+                    <input type="radio" name="is_correct" value="${answerCount}" required>
+                </div>
+                <input type="text" class="form-control" name="answer_label" value="${LETTERS[answerCount]}" readonly style="max-width: 60px;">
+                <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+            </div>
+        `;
+        
+        container.appendChild(answerItem);
+        answerCount++;
+        document.getElementById('answer_count').value = answerCount;
     });
 </script>
 {% endblock %}

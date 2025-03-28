@@ -1,113 +1,101 @@
-{% extends 'layout.html' %}
+{% extends "base.html" %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-10 offset-md-1">
-        <h1>Редактирование вопроса</h1>
+    <div class="col-md-10 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Редактирование вопроса</h1>
+            <a href="/edit_test/{{ test_id }}" class="btn btn-outline-secondary">Вернуться к тесту</a>
+        </div>
         
-        <form action="{{ url_for('edit_question', question_id=question.id) }}" method="post" enctype="multipart/form-data">
-            <div class="mb-3">
-                <label for="question_text" class="form-label">Текст вопроса</label>
-                <textarea class="form-control" id="question_text" name="question_text" rows="3" required>{{ question.text }}</textarea>
-            </div>
-            
-            <div class="mb-3">
-                {% if question.image %}
-                    <div class="mb-2">
-                        <label class="form-label">Текущее изображение:</label>
-                        <img src="{{ question.image }}" alt="Изображение к вопросу" class="question-image d-block" style="max-height: 200px;">
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="yes">
-                            <label class="form-check-label" for="remove_image">Удалить изображение</label>
-                        </div>
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/edit_question/{{ question.id }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="question_text" class="form-label">Текст вопроса</label>
+                        <input type="text" class="form-control" id="question_text" name="question_text" value="{{ question.text }}" required>
                     </div>
-                {% endif %}
-                
-                <label for="question_image" class="form-label">Изображение к вопросу (опционально)</label>
-                <input type="file" class="form-control" id="question_image" name="question_image" accept="image/*">
-                <small class="text-muted">Загрузите новое изображение, чтобы заменить существующее</small>
+                    
+                    <div class="mb-3">
+                        <label for="question_image" class="form-label">Изображение</label>
+                        {% if question.image_data %}
+                            <div class="mb-2">
+                                <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="1">
+                                    <label class="form-check-label" for="remove_image">
+                                        Удалить текущее изображение
+                                    </label>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <input type="file" class="form-control" id="question_image" name="question_image">
+                        <div class="form-text">Оставьте пустым, чтобы сохранить текущее изображение</div>
+                    </div>
+                    
+                    <input type="hidden" name="answer_count" id="answer_count" value="{{ question.answers|length }}">
+                    
+                    <div id="answers-container">
+                        <label class="form-label">Варианты ответов</label>
+                        
+                        {% for answer in question.answers %}
+                            <div class="answer-item mb-2">
+                                <div class="input-group">
+                                    <div class="input-group-text">
+                                        <input type="radio" name="is_correct" value="{{ loop.index0 }}" 
+                                               {% if answer.is_correct %}checked{% endif %} required>
+                                    </div>
+                                    <input type="text" class="form-control" name="answer_label" value="{{ answer.label }}" 
+                                           readonly style="max-width: 60px;">
+                                    <input type="text" class="form-control" name="answer_text" value="{{ answer.text }}" 
+                                           placeholder="Вариант ответа" required>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2 mb-3" id="add-answer-btn">
+                        Добавить вариант ответа
+                    </button>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    </div>
+                </form>
             </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Количество вариантов ответа</label>
-                <select class="form-select" id="answer_count" name="answer_count">
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4" {% if question.answers|length == 4 %}selected{% endif %}>4</option>
-                    <option value="5" {% if question.answers|length == 5 %}selected{% endif %}>5</option>
-                    <option value="6" {% if question.answers|length == 6 %}selected{% endif %}>6</option>
-                </select>
-            </div>
-            
-            <div id="answers_container">
-                <!-- Контейнер для вариантов ответа -->
-            </div>
-            
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-                <a href="{{ url_for('edit_test', test_id=test_id) }}" class="btn btn-secondary">Отмена</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация с текущими ответами
-        updateAnswersFields();
-        
-        document.getElementById('answer_count').addEventListener('change', function() {
-            updateAnswersFields();
-        });
-        
-        function updateAnswersFields() {
-            const count = parseInt(document.getElementById('answer_count').value);
-            const container = document.getElementById('answers_container');
-            container.innerHTML = '';
-            
-            // Получаем существующие ответы для этого вопроса
-            const answers = [
-                {% for answer in question.answers %}
-                {
-                    label: "{{ answer.label }}",
-                    text: "{{ answer.text }}",
-                    isCorrect: {{ 'true' if answer.is_correct else 'false' }}
-                },
-                {% endfor %}
-            ];
-            
-            for (let i = 0; i < count; i++) {
-                const letter = String.fromCharCode(97 + i); // a, b, c, d...
-                const existingAnswer = i < answers.length ? answers[i] : null;
-                
-                const answerDiv = document.createElement('div');
-                answerDiv.className = 'answer-item border p-3 mb-3';
-                
-                answerDiv.innerHTML = `
-                    <div class="mb-2">
-                        <label class="form-label">Метка ответа (по умолчанию ${letter})</label>
-                        <input type="text" class="form-control" name="answer_label[]" placeholder="${letter}" 
-                            value="${existingAnswer ? existingAnswer.label : ''}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Текст ответа</label>
-                        <input type="text" class="form-control" name="answer_text[]"
-                            value="${existingAnswer ? existingAnswer.text : ''}">
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${i}" name="is_correct[]" id="is_correct_${i}"
-                            ${existingAnswer && existingAnswer.isCorrect ? 'checked' : ''}>
-                        <label class="form-check-label" for="is_correct_${i}">
-                            Это правильный ответ
-                        </label>
-                    </div>
-                `;
-                
-                container.appendChild(answerDiv);
-            }
+    let answerCount = {{ question.answers|length }};
+    const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    
+    document.getElementById('add-answer-btn').addEventListener('click', function() {
+        if (answerCount >= 10) {
+            alert('Максимальное количество вариантов ответа - 10');
+            return;
         }
+        
+        const container = document.getElementById('answers-container');
+        const answerItem = document.createElement('div');
+        answerItem.className = 'answer-item mb-2';
+        
+        answerItem.innerHTML = `
+            <div class="input-group">
+                <div class="input-group-text">
+                    <input type="radio" name="is_correct" value="${answerCount}" required>
+                </div>
+                <input type="text" class="form-control" name="answer_label" value="${LETTERS[answerCount]}" readonly style="max-width: 60px;">
+                <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+            </div>
+        `;
+        
+        container.appendChild(answerItem);
+        answerCount++;
+        document.getElementById('answer_count').value = answerCount;
     });
 </script>
 {% endblock %} 

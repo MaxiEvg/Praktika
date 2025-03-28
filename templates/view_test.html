@@ -4,37 +4,41 @@
 <div class="row">
     <div class="col-md-12">
         <h1>{{ test.title }}</h1>
-        <p>{{ test.description }}</p>
+        {% if test.description %}
+            <p class="lead">{{ test.description }}</p>
+        {% endif %}
         
-        <div class="mb-4">
-            <a href="{{ url_for('edit_test', test_id=test.id) }}" class="btn btn-warning">Редактировать тест</a>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Вернуться на главную</a>
+        <div class="alert alert-info mb-4">
+            Всего вопросов: {{ test.questions|length }}
         </div>
         
-        <h2>Вопросы:</h2>
-        {% if test.questions %}
+        <form method="post" action="/submit_test/{{ test.id }}">
             {% for question in test.questions %}
                 <div class="question-card">
                     <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
                     
-                    {% if question.image %}
-                        <img src="{{ question.image }}" alt="Изображение к вопросу" class="question-image">
+                    {% if question.image_data %}
+                        <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
                     {% endif %}
                     
-                    <h5>Варианты ответов:</h5>
-                    <ul class="list-group">
+                    <div class="list-group mt-3">
                         {% for answer in question.answers %}
-                            <li class="list-group-item {% if answer.is_correct %}correct-answer{% endif %}">
-                                <strong>{{ answer.label }})</strong> {{ answer.text }} 
-                                {% if answer.is_correct %}<span class="badge bg-success">Правильный</span>{% endif %}
-                            </li>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                       id="q{{ question.id }}_a{{ answer.id }}" value="{{ answer.id }}" required>
+                                <label class="form-check-label" for="q{{ question.id }}_a{{ answer.id }}">
+                                    {{ answer.label }}. {{ answer.text }}
+                                </label>
+                            </div>
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
             {% endfor %}
-        {% else %}
-            <p>У теста пока нет вопросов.</p>
-        {% endif %}
+            
+            <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Отправить ответы</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %} 
