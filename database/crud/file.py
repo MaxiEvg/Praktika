@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.file import File
-from db.schemas import FileCreate
+from ..models.file import File
+from database.schemas import FileCreate
 
 class FileCRUD:
     def __init__(self, db: Session):
