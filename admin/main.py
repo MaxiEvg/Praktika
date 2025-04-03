@@ -1,33 +1,34 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
 import uvicorn
+from fastapi import FastAPI
+from core.config import settings
+from contextlib import asynccontextmanager
 
-from database.session import init_db
-from admin.routers.users import router as users_router
+from api import router as api_router
+from core.db_helper import db_helper
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    print("База данных инициализирована")
+    # startup
     yield
-    # Закомментировал удаление таблиц, чтобы сохранять данные между запусками
-    # await delete_tables()
-    # print("База данных очищена")
+    # shutdown
+    print("dispose engine")
+    await db_helper.dispose()
 
-app = FastAPI(
+main_app = FastAPI(
     title="Система адаптации сотрудников",
     description="API для управления процессом адаптации новых сотрудников",
     version="0.1.0",
     lifespan=lifespan
 )
-
-# Регистрация маршрутов
-app.include_router(users_router)
-
-# Подключение статических файлов
-app.mount("/static", StaticFiles(directory="admin/static"), name="static")
-
+main_app.include_router(
+    api_router,
+    prefix=settings.api.prefix,
+)
 if __name__ == "__main__":
-    uvicorn.run(app, reload=True)
+    uvicorn.run("main:main_app",
+                host=settings.run.host,
+                port=settings.run.port,
+                reload=True,
+    )
 
