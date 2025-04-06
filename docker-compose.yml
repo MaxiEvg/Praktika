@@ -15,7 +15,7 @@ services:
   pg:
     image: postgres
     environment:
-      POSTGRES_DB: shop
+      POSTGRES_DB: AdaptaCore
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       PGDATA: /var/lib/postgresql/data

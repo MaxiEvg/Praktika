@@ -1,4 +1,4 @@
-from database.session import new_session
+from session import new_session
 from abc import ABC, abstractmethod
 from sqlalchemy import insert, select
 

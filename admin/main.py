@@ -4,12 +4,12 @@ from core.config import settings
 from contextlib import asynccontextmanager
 
 from api import router as api_router
-from core.db_helper import db_helper
+from db_helper import db_helper
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup
+    await db_helper.create_tables()
     yield
     # shutdown
     print("dispose engine")

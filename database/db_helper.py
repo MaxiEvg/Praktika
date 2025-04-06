@@ -1,9 +1,13 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 
-from admin.core.config import settings
-
+from database.config import settings
+from models import Base
 
 class DatabaseHelper:
     def __init__(
@@ -34,6 +38,10 @@ class DatabaseHelper:
     async def session_getter(self) -> AsyncGenerator[AsyncSession, None]:
         async with self.session_factory as session:
             yield session
+
+    async def create_tables(self):
+        async with self.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
 db_helper = DatabaseHelper(
     url=str(settings.db.url),
