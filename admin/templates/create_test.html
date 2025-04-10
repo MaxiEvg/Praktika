@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Создание нового теста</h1>
+        
+        <form method="post" action="/create_test" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="title" class="form-label">Название теста</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Описание теста</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+            
+            <div id="questions-container">
+                <!-- Здесь будут добавляться вопросы -->
+                <div class="question-card" id="question-1">
+                    <h4>Вопрос 1</h4>
+                    <div class="mb-3">
+                        <label class="form-label">Текст вопроса</label>
+                        <input type="text" class="form-control" name="questions[0][text]" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Изображение (необязательно)</label>
+                        <input type="file" class="form-control" name="questions[0][image]">
+                    </div>
+                    
+                    <div class="mb-3 answers-container">
+                        <label class="form-label">Варианты ответов</label>
+                        <div class="answer-item">
+                            <div class="input-group mb-2">
+                                <div class="input-group-text">
+                                    <input type="radio" name="questions[0][correct]" value="0" required>
+                                </div>
+                                <input type="text" class="form-control" name="questions[0][answers][0]" placeholder="Вариант ответа" required>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2 add-answer-btn" data-question="0">Добавить вариант ответа</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary mt-3" id="add-question-btn">Добавить вопрос</button>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Сохранить тест</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let questionCount = 1;
+    
+    document.getElementById('add-question-btn').addEventListener('click', function() {
+        questionCount++;
+        const questionsContainer = document.getElementById('questions-container');
+        
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'question-card';
+        questionDiv.id = `question-${questionCount}`;
+        
+        questionDiv.innerHTML = `
+            <h4>Вопрос ${questionCount}</h4>
+            <div class="mb-3">
+                <label class="form-label">Текст вопроса</label>
+                <input type="text" class="form-control" name="questions[${questionCount-1}][text]" required>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Изображение (необязательно)</label>
+                <input type="file" class="form-control" name="questions[${questionCount-1}][image]">
+            </div>
+            
+            <div class="mb-3 answers-container">
+                <label class="form-label">Варианты ответов</label>
+                <div class="answer-item">
+                    <div class="input-group mb-2">
+                        <div class="input-group-text">
+                            <input type="radio" name="questions[${questionCount-1}][correct]" value="0" required>
+                        </div>
+                        <input type="text" class="form-control" name="questions[${questionCount-1}][answers][0]" placeholder="Вариант ответа" required>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 add-answer-btn" data-question="${questionCount-1}">Добавить вариант ответа</button>
+            </div>
+        `;
+        
+        questionsContainer.appendChild(questionDiv);
+        
+        // Добавляем обработчик для новой кнопки "Добавить вариант ответа"
+        questionDiv.querySelector('.add-answer-btn').addEventListener('click', addAnswerField);
+    });
+    
+    // Функция для добавления нового поля ответа
+    function addAnswerField() {
+        const questionIndex = this.getAttribute('data-question');
+        const answersContainer = this.parentElement;
+        const answerItems = answersContainer.querySelectorAll('.answer-item');
+        const newIndex = answerItems.length;
+        
+        const answerItem = document.createElement('div');
+        answerItem.className = 'answer-item';
+        
+        answerItem.innerHTML = `
+            <div class="input-group mb-2">
+                <div class="input-group-text">
+                    <input type="radio" name="questions[${questionIndex}][correct]" value="${newIndex}" required>
+                </div>
+                <input type="text" class="form-control" name="questions[${questionIndex}][answers][${newIndex}]" placeholder="Вариант ответа" required>
+            </div>
+        `;
+        
+        answersContainer.insertBefore(answerItem, this);
+    }
+    
+    // Добавляем обработчики для начальных кнопок "Добавить вариант ответа"
+    document.querySelectorAll('.add-answer-btn').forEach(button => {
+        button.addEventListener('click', addAnswerField);
+    });
+</script>
+{% endblock %} 

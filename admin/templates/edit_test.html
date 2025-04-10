@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Редактирование теста: {{ test.title }}</h1>
+            <div>
+                <a href="/view_test/{{ test.id }}" class="btn btn-outline-primary me-2">Предпросмотр</a>
+                <form method="post" action="/delete_test/{{ test.id }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите удалить этот тест?')">Удалить тест</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Основная информация</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/create_test">
+                    <input type="hidden" name="test_id" value="{{ test.id }}">
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название теста</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ test.title }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание теста</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ test.description }}</textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Обновить информацию</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Вопросы ({{ test.questions|length }})</h3>
+                <button type="button" class="btn btn-success" data-bs-toggle="collapse" data-bs-target="#addQuestionForm">
+                    Добавить вопрос
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="collapse mb-4" id="addQuestionForm">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h4>Новый вопрос</h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="/add_question/{{ test.id }}" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="question_text" class="form-label">Текст вопроса</label>
+                                    <input type="text" class="form-control" id="question_text" name="question_text" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="question_image" class="form-label">Изображение (необязательно)</label>
+                                    <input type="file" class="form-control" id="question_image" name="question_image">
+                                </div>
+                                
+                                <input type="hidden" name="answer_count" id="answer_count" value="2">
+                                
+                                <div id="answers-container">
+                                    <label class="form-label">Варианты ответов</label>
+                                    
+                                    <div class="answer-item mb-2">
+                                        <div class="input-group">
+                                            <div class="input-group-text">
+                                                <input type="radio" name="is_correct" value="0" checked required>
+                                            </div>
+                                            <input type="text" class="form-control" name="answer_label" value="A" readonly style="max-width: 60px;">
+                                            <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="answer-item mb-2">
+                                        <div class="input-group">
+                                            <div class="input-group-text">
+                                                <input type="radio" name="is_correct" value="1" required>
+                                            </div>
+                                            <input type="text" class="form-control" name="answer_label" value="B" readonly style="max-width: 60px;">
+                                            <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 mb-3" id="add-answer-btn">
+                                    Добавить вариант ответа
+                                </button>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Добавить вопрос</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if test.questions %}
+                    {% for question in test.questions %}
+                        <div class="question-card">
+                            <div class="d-flex justify-content-between">
+                                <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
+                                <div>
+                                    <a href="/edit_question/{{ question.id }}" class="btn btn-sm btn-outline-primary me-1">Редактировать</a>
+                                    <form method="post" action="/delete_question/{{ question.id }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Вы уверены, что хотите удалить этот вопрос?')">Удалить</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            {% if question.image_data %}
+                                <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
+                            {% endif %}
+                            
+                            <div class="list-group mt-2">
+                                {% for answer in question.answers %}
+                                    <div class="list-group-item {% if answer.is_correct %}correct-answer{% endif %}">
+                                        {{ answer.label }}. {{ answer.text }} {% if answer.is_correct %}<span class="badge bg-success">Правильный ответ</span>{% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">У этого теста пока нет вопросов. Добавьте первый вопрос!</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let answerCount = 2;
+    const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    
+    document.getElementById('add-answer-btn').addEventListener('click', function() {
+        if (answerCount >= 10) {
+            alert('Максимальное количество вариантов ответа - 10');
+            return;
+        }
+        
+        const container = document.getElementById('answers-container');
+        const answerItem = document.createElement('div');
+        answerItem.className = 'answer-item mb-2';
+        
+        answerItem.innerHTML = `
+            <div class="input-group">
+                <div class="input-group-text">
+                    <input type="radio" name="is_correct" value="${answerCount}" required>
+                </div>
+                <input type="text" class="form-control" name="answer_label" value="${LETTERS[answerCount]}" readonly style="max-width: 60px;">
+                <input type="text" class="form-control" name="answer_text" placeholder="Вариант ответа" required>
+            </div>
+        `;
+        
+        container.appendChild(answerItem);
+        answerCount++;
+        document.getElementById('answer_count').value = answerCount;
+    });
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Стили для боковой навигации */
+    .question-navigation {
+        position: fixed;
+        width: 180px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 10px 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .question-nav-header {
+        font-weight: bold;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .question-nav-list {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .question-nav-item {
+        padding: 8px 15px;
+        border-left: 3px solid transparent;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .question-nav-item:hover {
+        background-color: #e9ecef;
+        border-left-color: #6c757d;
+    }
+    
+    .question-nav-item.active {
+        background-color: #e9ecef;
+        border-left-color: #007bff;
+        font-weight: bold;
+    }
+    
+    /* Стиль для подсветки выбранного вопроса */
+    .highlight-question {
+        animation: highlight 2s;
+    }
+    
+    @keyframes highlight {
+        0% { background-color: #fff; }
+        20% { background-color: #e6f7ff; }
+        80% { background-color: #e6f7ff; }
+        100% { background-color: #fff; }
+    }
+    
+    /* Для корректной работы на маленьких экранах */
+    @media (max-width: 991.98px) {
+        .question-navigation {
+            position: sticky;
+            top: 20px;
+            width: 100%;
+            max-height: 200px;
+            margin-bottom: 20px;
+        }
+    }
+</style>
+{% endblock %} 

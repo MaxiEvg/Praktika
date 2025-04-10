@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">Результаты теста "{{ test.title }}"</h2>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <h3>Вы ответили правильно на {{ correct_count }} из {{ total_count }} вопросов</h3>
+                    <div class="progress mt-3" style="height: 30px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ (correct_count / total_count * 100)|int }}%;" 
+                             aria-valuenow="{{ (correct_count / total_count * 100)|int }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ (correct_count / total_count * 100)|int }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 class="mb-3">Детализация ответов:</h4>
+                
+                {% for question in results %}
+                    <div class="question-card">
+                        <h5>Вопрос {{ loop.index }}: {{ question.text }}</h5>
+                        
+                        {% if question.image_data %}
+                            <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
+                        {% endif %}
+                        
+                        <div class="list-group mt-2">
+                            {% for answer in question.answers %}
+                                <div class="list-group-item
+                                    {% if answer.is_correct %}correct-answer{% endif %}
+                                    {% if answer.id == question.user_answer and not answer.is_correct %}bg-danger text-white{% endif %}">
+                                    {{ answer.label }}. {{ answer.text }}
+                                    
+                                    {% if answer.is_correct %}
+                                        <span class="badge bg-success float-end">Правильный ответ</span>
+                                    {% endif %}
+                                    
+                                    {% if answer.id == question.user_answer and not answer.is_correct %}
+                                        <span class="badge bg-danger float-end">Ваш ответ</span>
+                                    {% elif answer.id == question.user_answer %}
+                                        <span class="badge bg-success float-end">Ваш ответ</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <div class="text-center mt-4">
+                    <a href="/dashboard" class="btn btn-primary">Вернуться к списку тестов</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

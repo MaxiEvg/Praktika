@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>{{ test.title }}</h1>
+        {% if test.description %}
+            <p class="lead">{{ test.description }}</p>
+        {% endif %}
+        
+        <div class="alert alert-info mb-4">
+            Всего вопросов: {{ test.questions|length }}
+        </div>
+        
+        <form method="post" action="/submit_test/{{ test.id }}">
+            {% for question in test.questions %}
+                <div class="question-card">
+                    <h4>Вопрос {{ loop.index }}: {{ question.text }}</h4>
+                    
+                    {% if question.image_data %}
+                        <img src="data:image/jpeg;base64,{{ question.image_data }}" class="question-image">
+                    {% endif %}
+                    
+                    <div class="list-group mt-3">
+                        {% for answer in question.answers %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                       id="q{{ question.id }}_a{{ answer.id }}" value="{{ answer.id }}" required>
+                                <label class="form-check-label" for="q{{ question.id }}_a{{ answer.id }}">
+                                    {{ answer.label }}. {{ answer.text }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Отправить ответы</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

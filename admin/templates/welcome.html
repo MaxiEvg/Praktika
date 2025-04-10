@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <h1 class="display-4 mt-4 mb-4">Добро пожаловать в систему тестирования!</h1>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="card-title">Что можно делать в системе:</h2>
+                <ul class="list-group list-group-item-action mt-3 text-start">
+                    <li class="list-group-item">✅ Создавать собственные тесты</li>
+                    <li class="list-group-item">✅ Проходить тесты других пользователей</li>
+                    <li class="list-group-item">✅ Добавлять вопросы с изображениями</li>
+                    <li class="list-group-item">✅ Просматривать результаты</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 col-md-6 mx-auto">
+            <a href="/register" class="btn btn-primary btn-lg mb-2">Зарегистрироваться</a>
+            <a href="/login" class="btn btn-outline-primary btn-lg">Войти</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 
