@@ -4,7 +4,7 @@ from core.config import settings
 from contextlib import asynccontextmanager
 
 from api import router as api_router
-from db_helper import db_helper
+from admin.db_helper import db_helper
 
 
 @asynccontextmanager

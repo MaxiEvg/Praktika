@@ -1,13 +1,8 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
 from collections.abc import AsyncGenerator
-
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 
-from admin.database.config import settings
-from models import Base
+from core.config import settings
+from database.models import Base
 
 class DatabaseHelper:
     def __init__(
