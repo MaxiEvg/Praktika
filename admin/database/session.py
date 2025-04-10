@@ -1,16 +1,8 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from contextlib import asynccontextmanager
-from database.models.base import Base
+from admin.database.models.base import Base
 # Импортируем модели, чтобы они зарегистрировались в Base.metadata
-import database.models.users
-import database.models.departments  
-import database.models.positions 
-import database.models.adaptation 
-import database.models.content
-import database.models.tests 
-import database.models.feedback 
-import database.models.notifications  
 
 # Получаем URL базы данных из переменных окружения или используем значение по умолчанию
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///tasks.db")

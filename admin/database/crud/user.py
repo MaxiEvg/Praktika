@@ -2,8 +2,8 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from database.models.users import User
-from database.schemas.users import UserCreate, UserUpdate
+from admin.database.models.users import User
+from admin.database.schemas.users import UserCreate, UserUpdate
 
 async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
     result = await db.execute(select(User).filter(User.id == user_id))
