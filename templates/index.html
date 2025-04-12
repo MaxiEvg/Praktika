@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Доступные тесты</h1>
+        
+        <div class="list-group mt-4">
+            {% if tests %}
+                {% for test in tests %}
+                    <a href="/test/{{ test.id }}" class="list-group-item list-group-item-action">
+                        <h5>{{ test.title }}</h5>
+                        <p>{{ test.description }}</p>
+                    </a>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">Нет доступных тестов</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

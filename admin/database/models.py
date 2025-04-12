@@ -1,3 +1,4 @@
+from pydantic import BaseModel, PostgresDsn
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy import MetaData
@@ -11,7 +12,12 @@ naming_convention = {
         "pk": "pk_%(table_name)s"
     }
 
-
+class DatabaseConfig(BaseModel):
+    url: PostgresDsn = "postgres://username:password@localhost:5432/your_database"
+    echo: bool = False
+    echo_pool: bool = False
+    pool_size: int = 50
+    max_overflow: int = 10
 
 class Base(DeclarativeBase):
     __abstract__ = True
