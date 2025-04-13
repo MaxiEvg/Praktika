@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres  # Можно указать нужную версию PostgreSQL
+    image: postgres:13-alpine  # Можно указать нужную версию PostgreSQL
     container_name: my_postgres  # Удобное имя контейнера
     environment:
       - POSTGRES_USER=user      # Имя пользователя для доступа к БД
