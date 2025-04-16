@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Создание теста</h1>
+    
+    <form method="POST" action="/tests/create" class="mt-4">
+        <div class="mb-3">
+            <label for="title" class="form-label">Название теста</label>
+            <input type="text" class="form-control" id="title" name="title" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Описание теста</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+        </div>
+        
+        <div id="questions-container">
+            <div class="question-card mb-4">
+                <h4>Вопрос 1</h4>
+                <div class="mb-3">
+                    <label class="form-label">Текст вопроса</label>
+                    <input type="text" class="form-control" name="questions[0][text]" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Тип вопроса</label>
+                    <select class="form-select" name="questions[0][type]" required>
+                        <option value="single">Один правильный ответ</option>
+                        <option value="multiple">Несколько правильных ответов</option>
+                        <option value="text">Текстовый ответ</option>
+                    </select>
+                </div>
+                
+                <div class="answers-container">
+                    <div class="mb-3">
+                        <label class="form-label">Ответ 1</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="questions[0][answers][0][text]" required>
+                            <div class="input-group-text">
+                                <input class="form-check-input" type="checkbox" name="questions[0][answers][0][correct]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-secondary btn-sm add-answer">Добавить ответ</button>
+            </div>
+        </div>
+        
+        <button type="button" class="btn btn-secondary mb-3" id="add-question">Добавить вопрос</button>
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Создать тест</button>
+        </div>
+    </form>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let questionCount = 1;
+    
+    document.getElementById('add-question').addEventListener('click', function() {
+        questionCount++;
+        const questionHtml = `
+            <div class="question-card mb-4">
+                <h4>Вопрос ${questionCount}</h4>
+                <div class="mb-3">
+                    <label class="form-label">Текст вопроса</label>
+                    <input type="text" class="form-control" name="questions[${questionCount-1}][text]" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Тип вопроса</label>
+                    <select class="form-select" name="questions[${questionCount-1}][type]" required>
+                        <option value="single">Один правильный ответ</option>
+                        <option value="multiple">Несколько правильных ответов</option>
+                        <option value="text">Текстовый ответ</option>
+                    </select>
+                </div>
+                
+                <div class="answers-container">
+                    <div class="mb-3">
+                        <label class="form-label">Ответ 1</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="questions[${questionCount-1}][answers][0][text]" required>
+                            <div class="input-group-text">
+                                <input class="form-check-input" type="checkbox" name="questions[${questionCount-1}][answers][0][correct]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-secondary btn-sm add-answer">Добавить ответ</button>
+            </div>
+        `;
+        document.getElementById('questions-container').insertAdjacentHTML('beforeend', questionHtml);
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-answer')) {
+            const questionCard = e.target.closest('.question-card');
+            const answersContainer = questionCard.querySelector('.answers-container');
+            const answerCount = answersContainer.children.length;
+            
+            const answerHtml = `
+                <div class="mb-3">
+                    <label class="form-label">Ответ ${answerCount + 1}</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="questions[${questionCard.dataset.index}][answers][${answerCount}][text]" required>
+                        <div class="input-group-text">
+                            <input class="form-check-input" type="checkbox" name="questions[${questionCard.dataset.index}][answers][${answerCount}][correct]">
+                        </div>
+                    </div>
+                </div>
+            `;
+            answersContainer.insertAdjacentHTML('beforeend', answerHtml);
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

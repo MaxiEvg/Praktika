@@ -1,8 +1,9 @@
+from pydantic import BaseModel, PostgresDsn
 import enum
 from typing import Annotated
 from datetime import datetime, date
 from sqlalchemy import (
-    Integer, String, DateTime, ForeignKey, Boolean, Date, MetaData, text, Enum as SQLEnum
+    Column, Integer, String, DateTime, ForeignKey, Boolean, Date, MetaData, text, Enum as SQLEnum
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -13,6 +14,13 @@ naming_convention = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s"
 }
+
+class DatabaseConfig(BaseModel):
+    url: PostgresDsn = "postgres://username:password@localhost:5432/your_database"
+    echo: bool = False
+    echo_pool: bool = False
+    pool_size: int = 50
+    max_overflow: int = 10
 
 class Base(DeclarativeBase):
     __abstract__ = True

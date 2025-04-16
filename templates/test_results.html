@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Результаты теста: {{ test.title }}</h1>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Общая информация</h5>
+            <p>Количество правильных ответов: {{ correct_answers }}/{{ total_questions }}</p>
+            <p>Процент правильных ответов: {{ (correct_answers/total_questions*100)|round(2) }}%</p>
+        </div>
+    </div>
+    
+    {% for question in test.questions %}
+    <div class="question-card mb-4 {% if question.is_correct %}correct-answer{% endif %}">
+        <h4>Вопрос {{ loop.index }}</h4>
+        <p>{{ question.text }}</p>
+        
+        <div class="mb-3">
+            <h5>Ваш ответ:</h5>
+            {% if question.user_answer is string %}
+                <p>{{ question.user_answer }}</p>
+            {% else %}
+                <ul>
+                    {% for answer in question.user_answer %}
+                    <li>{{ answer }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+        
+        <div class="mb-3">
+            <h5>Правильный ответ:</h5>
+            {% if question.correct_answer is string %}
+                <p>{{ question.correct_answer }}</p>
+            {% else %}
+                <ul>
+                    {% for answer in question.correct_answer %}
+                    <li>{{ answer }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+        
+        {% if not question.is_correct %}
+        <div class="alert alert-warning">
+            <p>Объяснение: {{ question.explanation }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    
+    <div class="d-grid gap-2">
+        <a href="/tests" class="btn btn-primary">Вернуться к списку тестов</a>
+    </div>
+</div>
+{% endblock %} 

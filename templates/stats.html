@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Статистика</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Общая статистика</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Всего тестов
+                            <span class="badge bg-primary rounded-pill">{{ total_tests }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Всего пользователей
+                            <span class="badge bg-primary rounded-pill">{{ total_users }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Всего попыток
+                            <span class="badge bg-primary rounded-pill">{{ total_attempts }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Популярные тесты</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Название теста</th>
+                                    <th>Количество попыток</th>
+                                    <th>Средний балл</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in popular_tests %}
+                                <tr>
+                                    <td>{{ test.title }}</td>
+                                    <td>{{ test.attempts }}</td>
+                                    <td>{{ test.average_score }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Активность пользователей</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Последняя активность</th>
+                                    <th>Количество тестов</th>
+                                    <th>Средний балл</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in active_users %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.last_activity }}</td>
+                                    <td>{{ user.tests_taken }}</td>
+                                    <td>{{ user.average_score }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
