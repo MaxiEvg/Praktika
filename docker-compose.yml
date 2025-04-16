@@ -1,63 +1,15 @@
 services:
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    hostname: rabbitmq
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  postgres:
+    image: postgres:13-alpine  # Можно указать нужную версию PostgreSQL
+    container_name: my_postgres  # Удобное имя контейнера
     environment:
-      RABBITMQ_DEFAULT_USER: "guest"
-      RABBITMQ_DEFAULT_PASS: "guest"
+      - POSTGRES_USER=user      # Имя пользователя для доступа к БД
+      - POSTGRES_PASSWORD=password  # Пароль для доступа к БД
+      - POSTGRES_DB=AdaptaCore     # Имя создаваемой базы данных
+    ports:
+      - "5432:5432"  # Проброс порта для доступа извне
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-
-  pg:
-    image: postgres
-    environment:
-      POSTGRES_DB: AdaptaCore
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      PGDATA: /var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready" ]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-
-  maildev:
-    image: maildev/maildev
-    environment:
-      - TZ=Europe/Moscow
-      - MAILDEV_WEB_PORT=1080
-      - MAILDEV_SMTP_PORT=1025
-    ports:
-      - "8080:1080"
-      - "1025:1025"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1m"
-
-  adminer:
-    image: adminer
-    ports:
-      - "8080:8080"
-
-  pgadmin:
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.org
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"
-
+      - postgres_data:/var/lib/postgresql/data  # Монтирование тома для хранения данных
 
 volumes:
-  pgdata:
-  rabbitmq-data:
+  postgres_data:  # Определение тома для персистентного хранения данных
