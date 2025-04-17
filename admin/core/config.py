@@ -1,13 +1,17 @@
+from pathlib import Path
+
 from pydantic import BaseModel
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 class RunConfig(BaseModel):
     host: str = "localhost"
     port: int = 8080
 
 class ApiPrefix(BaseModel):
-    prefix:str = "/api"
+    prefix:str = ""
 
 class DatabaseConfig(BaseModel):
     url: PostgresDsn
@@ -18,7 +22,7 @@ class DatabaseConfig(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(".env.template", ".env"),
+        env_file=(BASE_DIR / ".env.template", BASE_DIR / ".env"),
         case_sensitive=False,
         env_nested_delimiter="__",
         env_prefix="APP_CONFIG__"
