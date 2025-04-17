@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from typing import List, Dict, Any
-from templating import templates
+from .templating import templates
 
 router = APIRouter()
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse  # Добавьте HTMLResponse
-from templating import templates
+from .templating import templates
 
 router = APIRouter()
 

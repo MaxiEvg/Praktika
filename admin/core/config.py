@@ -11,7 +11,7 @@ class RunConfig(BaseModel):
     port: int = 8080
 
 class ApiPrefix(BaseModel):
-    prefix:str = "/api"
+    prefix:str = ""
 
 class DatabaseConfig(BaseModel):
     url: PostgresDsn

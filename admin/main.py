@@ -7,6 +7,7 @@ from core.config import settings
 from api import router as api_router
 from db_helper import db_helper
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db_helper.create_tables()
