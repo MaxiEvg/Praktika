@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 
-from core.config import settings
+from admin.core.config import settings
 from database.models import Base
 
 class DatabaseHelper:

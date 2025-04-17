@@ -1,10 +1,10 @@
 import uvicorn
 from fastapi import FastAPI
-from core.config import settings
+from admin.core.config import settings
 from contextlib import asynccontextmanager
 
 from api import router as api_router
-from admin.db_helper import db_helper
+from db_helper import db_helper
 
 
 @asynccontextmanager
