@@ -92,6 +92,9 @@ class UserAdaptationProgress(Base):
     completion_date: Mapped[date | None]
     notes: Mapped[str | None]
 
+    user: Mapped["User"] = relationship("User", back_populates="adaptation_progress")
+
+
 class ContentMaterial(Base):
     __tablename__ = 'content_material'
 
@@ -203,12 +206,12 @@ class UserTestAnswer(Base):
 class User(Base):
     __tablename__ = 'user'
 
-    id: Mapped[int] = mapped_column("ID_user", Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    first_name: Mapped[str] = mapped_column(String)
-    last_name: Mapped[str] = mapped_column(String)
-    username: Mapped[str] = mapped_column(String)
-    role: Mapped[str] = mapped_column(String)
+    first_name: Mapped[str]
+    last_name: Mapped[str]
+    username: Mapped[str]
+    role: Mapped[UserRole]
     registration_date: Mapped[date] = mapped_column(Date)
     department_id: Mapped[int] = mapped_column(Integer, ForeignKey("department.id"))
     position_id: Mapped[int] = mapped_column(Integer, ForeignKey("positions.id"))
