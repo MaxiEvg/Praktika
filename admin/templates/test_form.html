@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex">
+  <aside class="me-4" style="width: 200px; position: sticky; top: 20px;">
+    <ul class="list-group">
+      {% for i in range(1, (test.questions|length if test else 1) +1) %}
+      <li class="list-group-item"><a href="#question-{{ i }}">Вопрос {{ i }}</a></li>
+      {% endfor %}
+    </ul>
+  </aside>
+  <div class="flex-fill">
+    <h1>{{ test and "Редактирование теста" or "Создание теста" }}</h1>
+    <form id="test-form">
+      {% if test %}<input type="hidden" name="test_id" value="{{ test.id }}">{% endif %}
+      <div class="mb-3">
+        <label>Название теста</label>
+        <input type="text" class="form-control" name="title" value="{{ test.title if test else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label>Описание</label>
+        <textarea class="form-control" name="description">{{ test.description if test else '' }}</textarea>
+      </div>
+
+      <div id="questions-container">
+        <!-- Вопросы будут добавляться здесь скриптом -->
+      </div>
+
+      <button type="button" class="btn btn-outline-primary mb-3" id="add-question-btn">Добавить вопрос</button>
+      <button type="submit" class="btn btn-success">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<script>
+let questionCount = {{ test.questions|length if test else 0 }};
+
+function renderQuestion(idx, data={text:'',answers:[''],correct:0, image:null}) {
+  const div = document.createElement('div');
+  div.className = 'question-card mb-4';
+  div.id = `question-${idx}`;
+  div.innerHTML = `
+    <h4>Вопрос ${idx}</h4>
+    <input type="text" name="q_${idx}_text" class="form-control mb-2" placeholder="Текст вопроса" value="${data.text}" required>
+    <input type="file" name="q_${idx}_image" class="form-control mb-2">
+    <div id="answers-${idx}"></div>
+    <button type="button" class="btn btn-sm btn-secondary mb-2" onclick="addAnswer(${idx})">Добавить ответ</button>
+  `;
+  return div;
+}
+
+function addAnswer(qidx, text='', correct=false) {
+  const container = document.querySelector(`#answers-${qidx}`);
+  const aidx = container.children.length;
+  const div = document.createElement('div');
+  div.className = 'input-group mb-2';
+  div.innerHTML = `
+    <div class="input-group-text">
+      <input type="radio" name="q_${qidx}_correct" value="${aidx}" ${correct?'checked':''}>
+    </div>
+    <input type="text" name="q_${qidx}_a_${aidx}" class="form-control" placeholder="Текст ответа" value="${text}" required>
+  `;
+  container.appendChild(div);
+}
+
+document.getElementById('add-question-btn').onclick = ()=>{
+  questionCount++;
+  const cont = document.getElementById('questions-container');
+  const qDiv = renderQuestion(questionCount);
+  cont.appendChild(qDiv);
+};
+
+// Сбор данных и отправка формы
+const form = document.getElementById('test-form');
+form.onsubmit = async e=>{
+  e.preventDefault();
+  const fd = new FormData(form);
+  const questions = [];
+  for(let i=1;i<=questionCount;i++){
+    const text = fd.get(`q_${i}_text`);
+    const correct = +fd.get(`q_${i}_correct`);
+    const answers = [];
+    const files = [];
+    document.querySelectorAll(`#answers-${i} .input-group input[type=text]`).forEach(inp=>answers.push(inp.value));
+    questions.push({text, answers, correct, image_field: fd.get(`q_${i}_image`)?.name});
+  }
+  fd.set('questions_data', JSON.stringify(questions));
+  await fetch('/tests/', {method:'POST', body:fd});
+};
+</script>
+{% endblock %}
