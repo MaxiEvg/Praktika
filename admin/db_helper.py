@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 
-from core.config import settings
+from admin.core.config import settings
 from database.models import Base
 
 class DatabaseHelper:
@@ -31,7 +31,7 @@ class DatabaseHelper:
         await self.engine.dispose()
 
     async def session_getter(self) -> AsyncGenerator[AsyncSession, None]:
-        async with self.session_factory as session:
+        async with self.session_factory() as session:
             yield session
 
     async def create_tables(self):

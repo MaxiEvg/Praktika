@@ -143,18 +143,21 @@ class Notification(Base):
     )
     user: Mapped["User"] = relationship("User", back_populates="notifications")
 
+
 class Test(Base):
     __tablename__ = 'test'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    stage_id: Mapped[int] = mapped_column(Integer, ForeignKey("adaptation_stages.ID_adaptstage"), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None]
+
+    stage_id: Mapped[int] = mapped_column(Integer, ForeignKey("adaptation_stages.ID_adaptstage"), nullable=True)
     instructions: Mapped[str | None]
-    test_type: Mapped[TestType] = mapped_column(SQLEnum(TestType), nullable=False)
+    test_type: Mapped[TestType] = mapped_column(SQLEnum(TestType), nullable=True)
     passing_score: Mapped[int | None] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=text("TIMEZONE('utc-3', now())")
-    )
+    created_at: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc-3', now())"))
     updated_at: Mapped[datetime | None]
+
     stage: Mapped["AdaptationStage"] = relationship("AdaptationStage", back_populates="tests")
     questions: Mapped[list["TestQuestion"]] = relationship("TestQuestion", back_populates="test", cascade="all, delete")
 

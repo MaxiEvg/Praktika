@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex">
+  <!-- Боковая навигация по вопросам -->
+  <aside class="me-4" style="width: 200px; position: sticky; top: 20px;">
+    <ul class="list-group">
+      {% for i in range(1, (test.questions|length if test else 1) + 1) %}
+        <li class="list-group-item">
+          <a href="#question-{{ i }}">Вопрос {{ i }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+<h1>{{ test.title }}</h1>
+<p>{{ test.description }}</p>
+
+{% for q in test.questions %}
+  <div id="question-{{ loop.index }}" class="mb-4">
+    <h3>{{ loop.index }}. {{ q.question_text }}</h3>
+    {% if q.image_data %}
+      <img src="/static/{{ q.image_data }}" class="img-fluid mb-2"
+           alt="Изображение к вопросу {{ loop.index }}">
+    {% endif %}
+    <ul>
+      {% for opt in q.options %}
+        <li>
+          {{ opt.option_text }}
+          {% if opt.is_correct %}<strong>✅</strong>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% else %}
+  <p>У этого теста ещё нет вопросов.</p>
+{% endfor %}
+{% endblock %}
