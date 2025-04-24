@@ -2,11 +2,15 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import os
 
 from core.config import settings
 from api import router as api_router
 from db_helper import db_helper
 
+# Get the absolute path to the static directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,7 +26,7 @@ main_app = FastAPI(
     lifespan=lifespan
 )
 
-main_app.mount("/static", StaticFiles(directory="static"), name="static")
+main_app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 main_app.include_router(
     api_router,
     prefix=settings.api.prefix,
