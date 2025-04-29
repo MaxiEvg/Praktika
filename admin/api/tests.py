@@ -15,36 +15,39 @@ from .templating import templates
 from database.models import Test, TestQuestion, TestOption
 from db_helper import db_helper
 
-# Настройка логгера
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Папка для загрузок
 UPLOAD_DIR = os.path.join(os.getcwd(), "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Зависимость для получение сессии
 async def get_session() -> AsyncSession:
     async for s in db_helper.session_getter():
         yield s
 
 router = APIRouter()
+router.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Список всех тестов
 @router.get("/tests", response_class=HTMLResponse)
 async def list_tests(request: Request, session: AsyncSession = Depends(get_session)):
     logger.info("Получение списка всех тестов")
-    result = await session.execute(select(Test))
+    stmt = select(Test).options(
+        selectinload(Test.questions).selectinload(TestQuestion.options)
+    )
+    result = await session.execute(stmt)
     tests = result.scalars().all()
     return templates.TemplateResponse("tests_list.html", {"request": request, "tests": tests})
 
-# Форма создания нового теста
 @router.get("/tests/form", response_class=HTMLResponse)
 async def create_test_form(request: Request):
     logger.info("Отображение формы создания нового теста")
-    return templates.TemplateResponse("test_form.html", {"request": request, "test": None})
+    return templates.TemplateResponse("test_form.html", {
+        "request": request,
+        "test": None,
+        "question_count": 0,
+        "questions_data": []
+    })
 
-# Форма редактирования существующего теста
 @router.get("/tests/form/{test_id}", response_class=HTMLResponse)
 async def edit_test_form(
     request: Request,
@@ -64,9 +67,34 @@ async def edit_test_form(
     if not test:
         logger.error(f"Тест с ID {test_id} не найден")
         raise HTTPException(status_code=404, detail="Test not found")
-    return templates.TemplateResponse("test_form.html", {"request": request, "test": test})
 
-# Создание или обновление теста
+    # Подготавливаем список вопросов для сериализации в JS
+    questions_data = []
+    for q in test.questions:
+        answers = []
+        correct_index = 0
+        for idx, opt in enumerate(q.options):
+            answers.append(opt.option_text)
+            if opt.is_correct:
+                correct_index = idx
+
+        questions_data.append({
+            "text": q.question_text,
+            "answers": answers,
+            "correct": correct_index,
+            "image_path": q.image_path or ""
+        })
+
+    return templates.TemplateResponse(
+        "test_edit.html",
+        {
+            "request": request,
+            "test": test,
+            "question_count": len(test.questions),
+            "questions_data": questions_data
+        }
+    )
+
 @router.post("/tests/", response_class=RedirectResponse)
 async def create_update_test(
     request: Request,
@@ -74,17 +102,23 @@ async def create_update_test(
     title: str = Form(...),
     description: str = Form(""),
     questions_data: str = Form(...),
-    files: List[UploadFile] = File(None),
+    files: List[UploadFile] = File(default=[]),
     session: AsyncSession = Depends(get_session),
 ):
-    # Если редактирование
     if test_id:
         logger.info(f"Обновление теста с ID {test_id}")
-        test = await session.get(Test, test_id)
+        stmt = (
+            select(Test)
+            .options(
+                selectinload(Test.questions).selectinload(TestQuestion.options)
+            )
+            .filter(Test.id == test_id)
+        )
+        result = await session.execute(stmt)
+        test = result.scalars().first()
         if not test:
             logger.error(f"Тест с ID {test_id} не найден")
             raise HTTPException(status_code=404, detail="Test not found")
-        # Удаляем старые вопросы (cascade удалит опции)
         for q in list(test.questions):
             await session.delete(q)
     else:
@@ -93,7 +127,6 @@ async def create_update_test(
         session.add(test)
         await session.flush()
 
-    # Обновляем основные поля
     test.title = title
     test.description = description
 
@@ -110,7 +143,6 @@ async def create_update_test(
         session.add(q_obj)
         await session.flush()
 
-        # Сохраняем загруженное изображение, если есть
         img_field = q.get("image_field")
         if img_field:
             upload = next((f for f in files if f.filename == img_field), None)
@@ -120,9 +152,8 @@ async def create_update_test(
                 fpath = os.path.join(UPLOAD_DIR, fname)
                 with open(fpath, "wb") as out:
                     out.write(await upload.read())
-                q_obj.image_data = f"uploads/{fname}"
+                q_obj.image_path = f"uploads/{fname}"
 
-        # Добавляем варианты ответов
         for a_idx, answer in enumerate(q.get("answers", [])):
             opt = TestOption(
                 question_id=q_obj.id,
@@ -135,7 +166,6 @@ async def create_update_test(
     logger.info(f"Тест с ID {test.id} успешно сохранён")
     return RedirectResponse(url=f"/tests/{test.id}", status_code=303)
 
-# Просмотр конкретного теста
 @router.get("/tests/{test_id}", response_class=HTMLResponse)
 async def test_view(request: Request, test_id: int, session: AsyncSession = Depends(get_session)):
     logger.info(f"Получение теста с ID {test_id} для просмотра")
@@ -154,7 +184,6 @@ async def test_view(request: Request, test_id: int, session: AsyncSession = Depe
 
     return templates.TemplateResponse("test_view.html", {"request": request, "test": test})
 
-# Удаление теста
 @router.post("/tests/{test_id}/delete", response_class=RedirectResponse)
 async def delete_test(test_id: int, session: AsyncSession = Depends(get_session)):
     logger.info(f"Удаление теста с ID {test_id}")

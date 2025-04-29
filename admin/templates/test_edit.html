@@ -3,21 +3,18 @@
 {% block content %}
 <div class="d-flex">
   <aside class="me-4" style="width: 200px; position: sticky; top: 20px;">
-    <ul class="list-group list-group-flush" id="question-nav">
-      <!-- Навигация по вопросам -->
+    <ul class="list-group" id="question-nav">
+      {% for i in range(1, question_count + 1) %}
+      <li class="list-group-item"><a href="#q{{ i }}" class="nav-link">Вопрос {{ i }}</a></li>
+      {% endfor %}
     </ul>
   </aside>
   <div class="flex-fill">
-    {% if test %}
-      <h1 class="mb-4">Редактирование теста</h1>
-    {% else %}
-      <h1 class="mb-4">Создание теста</h1>
-    {% endif %}
+    <h1 class="mb-4">Редактирование теста</h1>
 
     <form id="test-form" enctype="multipart/form-data">
-      {% if test %}
-        <input type="hidden" name="test_id" value="{{ test.id }}">
-      {% endif %}
+      <input type="hidden" name="test_id" value="{{ test.id }}">
+
       <div class="mb-3">
         <label for="title" class="form-label">Название теста</label>
         <input
@@ -25,7 +22,7 @@
           id="title"
           class="form-control"
           name="title"
-          value="{{ test.title if test else '' }}"
+          value="{{ test.title }}"
           required
         >
       </div>
@@ -36,7 +33,7 @@
           class="form-control"
           name="description"
           rows="3"
-        >{{ test.description if test else '' }}</textarea>
+        >{{ test.description }}</textarea>
       </div>
 
       <div id="questions-container" class="accordion"></div>
@@ -52,8 +49,8 @@
 </div>
 
 <script>
-let questionCount = {{ test.questions|length if test else 0 }};
-let questionsData = {{ (test.questions|default([]))|tojson }};
+let questionCount = {{ question_count }};
+let questionsData = {{ questions_data|tojson }};
 
 function updateNav() {
   const nav = document.getElementById('question-nav');
@@ -66,7 +63,7 @@ function updateNav() {
   }
 }
 
-function renderQuestion(idx, data={text:'', answers:[{text:'', correct:false}], image_url:null}) {
+function renderQuestion(idx, data={text:'', answers:[{text:'', correct:false}], image_path:null}) {
   const item = document.createElement('div');
   item.className = 'accordion-item mb-3';
   item.id = `q${idx}`;
@@ -88,7 +85,7 @@ function renderQuestion(idx, data={text:'', answers:[{text:'', correct:false}], 
         <div class="mb-3">
           <label class="form-label">Изображение (необязательно)</label>
           <input type="file" name="q_${idx}_image" class="form-control mb-2">
-          ${data.image_url ? `<img src="/static/${data.image_url}" class="img-fluid rounded mt-2">` : ''}
+          ${data.image_path ? `<img src="/static/${data.image_path}" class="img-fluid rounded mt-2">` : ''}
         </div>
         <div class="mb-3">
           <label class="form-label">Варианты ответов</label>
@@ -113,7 +110,7 @@ function addAnswer(qidx, text='', correct=false) {
   group.className = 'input-group mb-2';
   group.innerHTML = `
     <span class="input-group-text">
-      <input type="radio" name="q_${qidx}_correct" value="${aidx}" ${correct?'checked':''}>
+      <input type="radio" name="q_${qidx}_correct" value="${aidx}" ${correct ? 'checked' : ''}>
     </span>
     <input type="text" name="q_${qidx}_a_${aidx}" class="form-control"
       placeholder="Текст ответа" value="${text}" required>
@@ -135,7 +132,7 @@ function rebuildQuestions() {
   const items = Array.from(container.children);
   questionCount = items.length;
   container.innerHTML = '';
-  items.forEach((old, i) => {
+  items.forEach((_, i) => {
     container.appendChild(renderQuestion(i + 1));
   });
   updateNav();
@@ -146,12 +143,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (questionsData.length) {
     questionsData.forEach((q, idx) => {
       questionCount = idx + 1;
-      container.appendChild(renderQuestion(questionCount, {
-        text: q.question_text,
-        answers: q.options.map(o => ({text: o.option_text, correct: o.is_correct})),
-        image_url: q.image_path
-      }));
-      q.options.forEach(o => addAnswer(questionCount, o.option_text, o.is_correct));
+      container.appendChild(renderQuestion(questionCount, q));
+      q.answers.forEach((text, i) => {
+        addAnswer(questionCount, text, i === q.correct);
+      });
     });
   }
   updateNav();
@@ -181,7 +176,7 @@ document.getElementById('test-form').onsubmit = async e => {
   fd.set('questions_data', JSON.stringify(questions));
   try {
     const resp = await fetch('/tests/', { method: 'POST', body: fd });
-    if (resp.ok) location.reload();
+    if (resp.ok) location.href = `/tests/{{ test.id }}`;
     else alert('Ошибка при сохранении');
   } catch {
     alert('Сетевая ошибка');

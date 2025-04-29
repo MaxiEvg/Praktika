@@ -171,6 +171,7 @@ class TestQuestion(Base):
     question_text: Mapped[str | None]
     question_type: Mapped[str | None]
     sequence_number: Mapped[int | None]
+    image_path: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )

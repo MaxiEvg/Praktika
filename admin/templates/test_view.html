@@ -1,38 +1,94 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+
 {% block content %}
 <div class="d-flex">
-  <!-- Боковая навигация по вопросам -->
-  <aside class="me-4" style="width: 200px; position: sticky; top: 20px;">
-    <ul class="list-group">
-      {% for i in range(1, (test.questions|length if test else 1) + 1) %}
-        <li class="list-group-item">
-          <a href="#question-{{ i }}">Вопрос {{ i }}</a>
-        </li>
+  <aside class="me-4" style="width:200px; position:sticky; top:20px;">
+    <ul class="list-group" id="question-nav">
+      {% for i in range(1, test.questions|length + 1) %}
+      <li class="list-group-item"><a href="#q{{ i }}" class="nav-link">Вопрос {{ i }}</a></li>
       {% endfor %}
     </ul>
   </aside>
+  <div class="flex-fill">
+    <h1 class="mb-4">{{ test.title }}</h1>
+    {% if test.description %}<p class="lead">{{ test.description }}</p>{% endif %}
+    <div class="alert alert-info">Всего вопросов: {{ test.questions|length }}</div>
 
-<h1>{{ test.title }}</h1>
-<p>{{ test.description }}</p>
+    <div class="accordion" id="questions-accordion">
+      {% for question in test.questions %}
+      <div class="accordion-item mb-3" id="q{{ loop.index }}-item">
+        <h2 class="accordion-header" id="q{{ loop.index }}-heading">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ loop.index }}" aria-expanded="false"
+                  aria-controls="collapse{{ loop.index }}">
+            Вопрос {{ loop.index }}
+          </button>
+        </h2>
+        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="q{{ loop.index }}-heading" data-bs-parent="#questions-accordion">
+          <div class="accordion-body">
+            <p><strong>{{ question.question_text }}</strong></p>
+            {% if question.image_path %}
+            <img src="/static/{{ question.image_path }}" class="img-fluid rounded mb-3" alt="Вопрос {{ loop.index }}">
+            {% endif %}
+            <div class="list-group mb-3">
+              {% for option in question.options %}
+              <div class="form-check list-group-item">
+                <input class="form-check-input me-2" type="radio" disabled
+                       id="q{{ question.id }}_a{{ option.id }}"
+                       {% if option.is_correct %}checked{% endif %}>
+                <label class="form-check-label {% if option.is_correct %}text-success fw-bold{% endif %}" for="q{{ question.id }}_a{{ option.id }}">
+                  {{ option.option_text }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            <a href="/tests/form/{{ test.id }}#q{{ loop.index }}" class="btn btn-outline-primary btn-sm">Изменить вопрос</a>
+            <!-- Кнопка удаления -->
+            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ question.id }}">
+              Удалить вопрос
+            </button>
 
-{% for q in test.questions %}
-  <div id="question-{{ loop.index }}" class="mb-4">
-    <h3>{{ loop.index }}. {{ q.question_text }}</h3>
-    {% if q.image_data %}
-      <img src="/static/{{ q.image_data }}" class="img-fluid mb-2"
-           alt="Изображение к вопросу {{ loop.index }}">
-    {% endif %}
-    <ul>
-      {% for opt in q.options %}
-        <li>
-          {{ opt.option_text }}
-          {% if opt.is_correct %}<strong>✅</strong>{% endif %}
-        </li>
+            <!-- Модальное окно подтверждения удаления -->
+            <div class="modal fade" id="deleteModal{{ question.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ question.id }}" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel{{ question.id }}">Подтверждение удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                  </div>
+                  <div class="modal-body">
+                    Вы уверены, что хотите удалить этот вопрос?
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <form method="post" action="/tests/delete_question/{{ question.id }}">
+                      <button type="submit" class="btn btn-danger">Удалить</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Конец модального окна -->
+          </div>
+        </div>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </div>
 </div>
-{% else %}
-  <p>У этого теста ещё нет вопросов.</p>
-{% endfor %}
+
+<script>
+// Автоматическое раскрытие при наличии хеша в URL
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash;
+  if (hash) {
+    const target = document.querySelector(hash + ' .accordion-button');
+    if (target) {
+      target.classList.remove('collapsed');
+      const collapseEl = document.querySelector(target.getAttribute('data-bs-target'));
+      new bootstrap.Collapse(collapseEl, { show: true });
+    }
+  }
+});
+</script>
 {% endblock %}
