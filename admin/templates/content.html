@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% set page = 'content' %}
+{% block title %}Создать контент — HR Панель{% endblock %}
+
+{% block content %}
+  <div class="card mx-auto" style="max-width: 600px;">
+    <div class="card-body">
+      <h3 class="card-title mb-4">Новый материал</h3>
+      <form action="/content/save" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="id" value="">
+
+        <!-- Название -->
+        <div class="mb-3">
+          <label for="title" class="form-label">Название</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            class="form-control"
+            placeholder="Введите название"
+            required>
+        </div>
+
+        <!-- Тип материала -->
+        <div class="mb-3">
+          <label for="type" class="form-label">Тип материала</label>
+          <select
+            id="type"
+            name="type"
+            class="form-select"
+            required>
+            <option value="image">Изображение</option>
+            <option value="video">Видео</option>
+            <option value="document">Документ</option>
+          </select>
+        </div>
+
+        <!-- Категория -->
+        <div class="mb-3">
+          <label for="category" class="form-label">Категория</label>
+          <input
+            type="text"
+            id="category"
+            name="category"
+            class="form-control"
+            placeholder="Например: Руководства, Инструкции">
+        </div>
+
+        <!-- Файл -->
+        <div class="mb-3">
+          <label for="file" class="form-label">Файл</label>
+          <input
+            type="file"
+            id="file"
+            name="file"
+            class="form-control"
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+            required>
+        </div>
+
+        <!-- Описание -->
+        <div class="mb-3">
+          <label for="description" class="form-label">Описание</label>
+          <textarea
+            id="description"
+            name="description"
+            class="form-control"
+            rows="4"
+            placeholder="Краткое описание материала"></textarea>
+        </div>
+
+        <!-- Сохранить -->
+        <div class="text-end">
+          <button type="submit" class="btn btn-success px-4">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
