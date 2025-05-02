@@ -1,9 +1,10 @@
 from pydantic import BaseModel, PostgresDsn
-import enum
-from typing import Annotated
+from enum import Enum
+from typing import Annotated, Optional, List
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Boolean, Date, MetaData, text, Enum as SQLEnum
+    Column, Integer, String, DateTime, ForeignKey, Boolean, Date, MetaData,
+    text, Enum as SQLEnum
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -15,6 +16,7 @@ naming_convention = {
     "pk": "pk_%(table_name)s"
 }
 
+
 class DatabaseConfig(BaseModel):
     url: PostgresDsn = "postgres://username:password@localhost:5432/your_database"
     echo: bool = False
@@ -22,206 +24,269 @@ class DatabaseConfig(BaseModel):
     pool_size: int = 50
     max_overflow: int = 10
 
+
 class Base(DeclarativeBase):
     __abstract__ = True
     metadata = MetaData(naming_convention=naming_convention)
 
+
 IntPk = Annotated[int, mapped_column(primary_key=True)]
 
-class TypeContent(enum.Enum):
-    article = "article"
-    video = "video"
-    image = "image"
 
-class ProgressStatus(enum.Enum):
-    pending = "pending"
-    completed = "completed"
+# Correct Enum definitions
+class TypeContent(str, Enum):
+    IMAGE = "image"
+    VIDEO = "video"
+    DOCUMENT = "document"
 
-class TestType(enum.Enum):
-    open = "open"
-    closed = "closed"
 
-class NotificationStatus(enum.Enum):
-    sent = "sent"
-    pending = "pending"
+class ProgressStatus(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
 
-class UserRole(enum.Enum):
-    employee = "employee"
-    hr = "HR"
+
+class TestType(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+
+
+class NotificationStatus(str, Enum):
+    SENT = "sent"
+    PENDING = "pending"
+
+
+class UserRole(str, Enum):
+    EMPLOYEE = "employee"
+    HR = "HR"
+
 
 class AdaptationPlan(Base):
     __tablename__ = 'adaptation_plans'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[IntPk]
     name: Mapped[str]
-    description: Mapped[str | None]
+    description: Mapped[Optional[str]]
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )
     position_id: Mapped[int] = mapped_column(ForeignKey('positions.id', ondelete="CASCADE"))
-    position: Mapped["Positions"] = relationship("Positions", back_populates="adaptation_plans")
-    stages: Mapped[list["AdaptationStage"]] = relationship("AdaptationStage", back_populates="plan", cascade="all, delete-orphan")
+    position: Mapped["Positions"] = relationship(back_populates="adaptation_plans")
+    stages: Mapped[List["AdaptationStage"]] = relationship(
+        back_populates="plan",
+        cascade="all, delete-orphan"
+    )
+
 
 class AdaptationStage(Base):
     __tablename__ = 'adaptation_stages'
 
-    id: Mapped[int] = mapped_column("ID_adaptstage", Integer, primary_key=True)
-    plan_id: Mapped[int] = mapped_column("ID_adaptplan", Integer, ForeignKey("adaptation_plans.id"))
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    sequence_number: Mapped[int | None]
-    content_id: Mapped[int] = mapped_column("ID_material", Integer, ForeignKey("content_material.id"))
-    plan: Mapped["AdaptationPlan"] = relationship("AdaptationPlan", back_populates="stages")
-    content: Mapped["ContentMaterial"] = relationship("ContentMaterial", back_populates="adaptation_stages")
+    id: Mapped[IntPk]
+    plan_id: Mapped[int] = mapped_column(ForeignKey("adaptation_plans.id"))
+    title: Mapped[str] = mapped_column(nullable=False)
+    sequence_number: Mapped[Optional[int]]
+    content_id: Mapped[Optional[int]] = mapped_column(ForeignKey("content_material.id"))
+    plan: Mapped["AdaptationPlan"] = relationship(back_populates="stages")
+    content: Mapped[Optional["ContentMaterial"]] = relationship(back_populates="adaptation_stages")
+    tests: Mapped[List["Test"]] = relationship(
+        back_populates="stage",
+        cascade="all, delete-orphan"
+    )
+
 
 class Positions(Base):
     __tablename__ = 'positions'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[IntPk]
     name: Mapped[str]
-    description: Mapped[str | None]
-    adaptation_plans: Mapped[list["AdaptationPlan"]] = relationship("AdaptationPlan", back_populates="position")
-    users: Mapped[list["User"]] = relationship("User", back_populates="position", cascade="all, delete")
+    description: Mapped[Optional[str]]
+    adaptation_plans: Mapped[List["AdaptationPlan"]] = relationship(
+        back_populates="position"
+    )
+    users: Mapped[List["User"]] = relationship(
+        back_populates="position",
+        cascade="all, delete"
+    )
+
 
 class UserAdaptationProgress(Base):
     __tablename__ = 'user_adaptation_progress'
 
-    id: Mapped[int] = mapped_column("ID_useradaptprogress", Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column("ID_user", Integer, ForeignKey("user.id"))
-    stage_id: Mapped[int] = mapped_column("ID_adaptstage", Integer, ForeignKey("adaptation_stages.ID_adaptstage"))
+    id: Mapped[IntPk]
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    stage_id: Mapped[int] = mapped_column(ForeignKey("adaptation_stages.id"))
     status: Mapped[ProgressStatus] = mapped_column(SQLEnum(ProgressStatus), nullable=False)
-    completion_date: Mapped[date | None]
-    notes: Mapped[str | None]
-
-    user: Mapped["User"] = relationship("User", back_populates="adaptation_progress")
+    completion_date: Mapped[Optional[date]]
+    notes: Mapped[Optional[str]]
+    user: Mapped["User"] = relationship(back_populates="adaptation_progress")
 
 
 class ContentMaterial(Base):
     __tablename__ = 'content_material'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str | None]
+    id: Mapped[IntPk]
+    title: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[Optional[str]]
     type: Mapped[TypeContent] = mapped_column(SQLEnum(TypeContent), nullable=False)
-    content_url: Mapped[str | None]
+    content_url: Mapped[Optional[str]]
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )
-    updated_at: Mapped[datetime | None]
-    category: Mapped[str | None]
-    adaptation_stages: Mapped[list["AdaptationStage"]] = relationship("AdaptationStage", back_populates="content", cascade="all, delete")
-    feedbacks: Mapped[list["Feedback"]] = relationship("Feedback", back_populates="material", cascade="all, delete")
+    updated_at: Mapped[Optional[datetime]]
+    category: Mapped[Optional[str]]
+    adaptation_stages: Mapped[List["AdaptationStage"]] = relationship(
+        back_populates="content",
+        cascade="all, delete"
+    )
+    feedbacks: Mapped[List["Feedback"]] = relationship(
+        back_populates="material",
+        cascade="all, delete"
+    )
+
 
 class Department(Base):
     __tablename__ = 'department'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    description: Mapped[str | None]
-    users: Mapped[list["User"]] = relationship("User", back_populates="department", cascade="all, delete")
+    id: Mapped[IntPk]
+    name: Mapped[str] = mapped_column(unique=True, nullable=False)
+    description: Mapped[Optional[str]]
+    users: Mapped[List["User"]] = relationship(
+        back_populates="department",
+        cascade="all, delete"
+    )
+
 
 class Feedback(Base):
     __tablename__ = 'feedback'
 
-    id: Mapped[int] = mapped_column("ID_feedback", Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column("ID_user", Integer, ForeignKey("user.id"))
-    material_id: Mapped[int] = mapped_column("ID_material", Integer, ForeignKey("content_material.id"))
-    rating: Mapped[int | None] = mapped_column(Integer)
-    comment: Mapped[str | None]
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
-    user: Mapped["User"] = relationship("User", back_populates="feedbacks")
-    material: Mapped["ContentMaterial"] = relationship("ContentMaterial", back_populates="feedbacks")
+    id: Mapped[IntPk]
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    material_id: Mapped[int] = mapped_column(ForeignKey("content_material.id"))
+    rating: Mapped[Optional[int]]
+    comment: Mapped[Optional[str]]
+    submitted_at: Mapped[Optional[datetime]]
+    user: Mapped["User"] = relationship(back_populates="feedbacks")
+    material: Mapped["ContentMaterial"] = relationship(back_populates="feedbacks")
+
 
 class Notification(Base):
     __tablename__ = 'notification'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"), nullable=False)
-    message: Mapped[str] = mapped_column(String, nullable=False)
+    id: Mapped[IntPk]
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    message: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[NotificationStatus] = mapped_column(SQLEnum(NotificationStatus), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )
-    user: Mapped["User"] = relationship("User", back_populates="notifications")
+    user: Mapped["User"] = relationship(back_populates="notifications")
 
 
 class Test(Base):
     __tablename__ = 'test'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str | None]
+    id: Mapped[IntPk]
+    title: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[Optional[str]]
+    stage_id: Mapped[Optional[int]] = mapped_column(ForeignKey("adaptation_stages.id"))
+    instructions: Mapped[Optional[str]]
+    test_type: Mapped[Optional[TestType]] = mapped_column(SQLEnum(TestType))
+    passing_score: Mapped[Optional[int]]
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=text("TIMEZONE('utc-3', now())")
+    )
+    updated_at: Mapped[Optional[datetime]]
+    stage: Mapped[Optional["AdaptationStage"]] = relationship(back_populates="tests")
+    questions: Mapped[List["TestQuestion"]] = relationship(
+        back_populates="test",
+        cascade="all, delete"
+    )
 
-    stage_id: Mapped[int] = mapped_column(Integer, ForeignKey("adaptation_stages.ID_adaptstage"), nullable=True)
-    instructions: Mapped[str | None]
-    test_type: Mapped[TestType] = mapped_column(SQLEnum(TestType), nullable=True)
-    passing_score: Mapped[int | None] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc-3', now())"))
-    updated_at: Mapped[datetime | None]
-
-    stage: Mapped["AdaptationStage"] = relationship("AdaptationStage", back_populates="tests")
-    questions: Mapped[list["TestQuestion"]] = relationship("TestQuestion", back_populates="test", cascade="all, delete")
-
-AdaptationStage.tests = relationship("Test", back_populates="stage", cascade="all, delete-orphan")
 
 class TestQuestion(Base):
     __tablename__ = 'test_question'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    test_id: Mapped[int] = mapped_column(Integer, ForeignKey("test.id"), nullable=False)
-    question_text: Mapped[str | None]
-    question_type: Mapped[str | None]
-    sequence_number: Mapped[int | None]
-    image_path: Mapped[str | None]
+    id: Mapped[IntPk]
+    test_id: Mapped[int] = mapped_column(ForeignKey("test.id"), nullable=False)
+    question_text: Mapped[Optional[str]]
+    question_type: Mapped[Optional[str]]
+    sequence_number: Mapped[Optional[int]]
+    image_path: Mapped[Optional[str]]
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )
-    updated_at: Mapped[datetime | None]
-    test: Mapped["Test"] = relationship("Test", back_populates="questions")
-    options: Mapped[list["TestOption"]] = relationship("TestOption", back_populates="question", cascade="all, delete")
-    user_answers: Mapped[list["UserTestAnswer"]] = relationship("UserTestAnswer", back_populates="question", cascade="all, delete")
+    updated_at: Mapped[Optional[datetime]]
+    test: Mapped["Test"] = relationship(back_populates="questions")
+    options: Mapped[List["TestOption"]] = relationship(
+        back_populates="question",
+        cascade="all, delete"
+    )
+    user_answers: Mapped[List["UserTestAnswer"]] = relationship(
+        back_populates="question",
+        cascade="all, delete"
+    )
+
 
 class TestOption(Base):
     __tablename__ = 'test_option'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    question_id: Mapped[int] = mapped_column(Integer, ForeignKey("test_question.id"), nullable=False)
-    option_text: Mapped[str | None]
-    is_correct: Mapped[bool | None]
+    id: Mapped[IntPk]
+    question_id: Mapped[int] = mapped_column(ForeignKey("test_question.id"), nullable=False)
+    option_text: Mapped[Optional[str]]
+    is_correct: Mapped[Optional[bool]]
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc-3', now())")
     )
-    updated_at: Mapped[datetime | None]
-    question: Mapped["TestQuestion"] = relationship("TestQuestion", back_populates="options")
-    user_answers: Mapped[list["UserTestAnswer"]] = relationship("UserTestAnswer", back_populates="option", cascade="all, delete")
+    updated_at: Mapped[Optional[datetime]]
+    question: Mapped["TestQuestion"] = relationship(back_populates="options")
+    user_answers: Mapped[List["UserTestAnswer"]] = relationship(
+        back_populates="option",
+        cascade="all, delete"
+    )
+
 
 class UserTestAnswer(Base):
     __tablename__ = 'user_test_answer'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"), nullable=False)
-    question_id: Mapped[int] = mapped_column(Integer, ForeignKey("test_question.id"), nullable=False)
-    answer_text: Mapped[str | None]
-    option_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("test_option.id"))
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
-    user: Mapped["User"] = relationship("User", back_populates="test_answers")
-    question: Mapped["TestQuestion"] = relationship("TestQuestion", back_populates="user_answers")
-    option: Mapped["TestOption"] = relationship("TestOption", back_populates="user_answers")
+    id: Mapped[IntPk]
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    question_id: Mapped[int] = mapped_column(ForeignKey("test_question.id"), nullable=False)
+    answer_text: Mapped[Optional[str]]
+    option_id: Mapped[Optional[int]] = mapped_column(ForeignKey("test_option.id"))
+    submitted_at: Mapped[Optional[datetime]]
+    user: Mapped["User"] = relationship(back_populates="test_answers")
+    question: Mapped["TestQuestion"] = relationship(back_populates="user_answers")
+    option: Mapped[Optional["TestOption"]] = relationship(back_populates="user_answers")
+
 
 class User(Base):
     __tablename__ = 'user'
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    telegram_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    id: Mapped[IntPk]
+    telegram_id: Mapped[str] = mapped_column(unique=True, nullable=False)
     first_name: Mapped[str]
     last_name: Mapped[str]
     username: Mapped[str]
-    role: Mapped[UserRole]
-    registration_date: Mapped[date] = mapped_column(Date)
-    department_id: Mapped[int] = mapped_column(Integer, ForeignKey("department.id"))
-    position_id: Mapped[int] = mapped_column(Integer, ForeignKey("positions.id"))
-    test_answers = relationship("UserTestAnswer", back_populates="user", cascade="all, delete")
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete")
-    feedbacks = relationship("Feedback", back_populates="user", cascade="all, delete")
-    adaptation_progress = relationship("UserAdaptationProgress", back_populates="user", cascade="all, delete")
-    department = relationship("Department", back_populates="users")
-    position = relationship("Positions", back_populates="users")
+    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole))
+    registration_date: Mapped[date]
+    department_id: Mapped[int] = mapped_column(ForeignKey("department.id"))
+    position_id: Mapped[int] = mapped_column(ForeignKey("positions.id"))
+
+    # Relationships
+    test_answers: Mapped[List["UserTestAnswer"]] = relationship(
+        back_populates="user",
+        cascade="all, delete"
+    )
+    notifications: Mapped[List["Notification"]] = relationship(
+        back_populates="user",
+        cascade="all, delete"
+    )
+    feedbacks: Mapped[List["Feedback"]] = relationship(
+        back_populates="user",
+        cascade="all, delete"
+    )
+    adaptation_progress: Mapped[List["UserAdaptationProgress"]] = relationship(
+        back_populates="user",
+        cascade="all, delete"
+    )
+    department: Mapped["Department"] = relationship(back_populates="users")
+    position: Mapped["Positions"] = relationship(back_populates="users")

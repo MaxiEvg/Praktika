@@ -1,0 +1,128 @@
+<!-- templates/content_view.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Медиатека</h1>
+        <a href="/content/form" class="btn btn-success">Добавить материал</a>
+    </div>
+
+    <div class="row">
+        <!-- Навигация -->
+        <div class="col-md-3">
+            <div class="list-group">
+                <a href="/content"
+                   class="list-group-item list-group-item-action {% if not current_material %}active{% endif %}">
+                    Все материалы
+                </a>
+                {% for category in categories %}
+                <a href="/content?category={{ category }}"
+                   class="list-group-item list-group-item-action">
+                    {{ category }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="col-md-9">
+            {% if current_material %}
+                <!-- Детали материала -->
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ current_material.title }}</h2>
+                        <div class="mb-3">
+                            <span class="badge bg-primary">{{ current_material.type.value }}</span>
+                            {% if current_material.category %}
+                            <span class="badge bg-secondary">{{ current_material.category }}</span>
+                            {% endif %}
+                        </div>
+
+                        {% if current_material.type == TypeContent.IMAGE %}
+                        <img src="/static/{{ current_material.content_url }}"
+                             class="img-fluid rounded mb-3" alt="{{ current_material.title }}">
+                        {% elif current_material.type == TypeContent.VIDEO %}
+                        <video controls class="w-100 mb-3">
+                            <source src="/static/{{ current_material.content_url }}">
+                        </video>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <a href="/static/{{ current_material.content_url }}"
+                               download class="btn btn-primary">
+                                Скачать документ
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <p class="card-text">{{ current_material.description }}</p>
+
+                        <div class="mt-4">
+                            <a href="/content/form/{{ current_material.id }}"
+                               class="btn btn-outline-primary">
+                                Редактировать
+                            </a>
+                            <button type="button" class="btn btn-outline-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal">
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Список материалов -->
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    {% for material in materials %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if material.type == TypeContent.IMAGE %}
+                            <img src="/static/{{ material.content_url }}"
+                                 class="card-img-top" alt="{{ material.title }}">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ material.title }}</h5>
+                                <div class="mb-2">
+                                    <span class="badge bg-primary">{{ material.type.value }}</span>
+                                    {% if material.category %}
+                                    <span class="badge bg-secondary">{{ material.category }}</span>
+                                    {% endif %}
+                                </div>
+                                <p class="card-text text-muted">
+                                    {{ material.description|truncate(100) }}
+                                </p>
+                                <a href="/content/{{ material.id }}"
+                                   class="btn btn-primary">
+                                    Подробнее
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить этот материал?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="post" action="/content/delete/{{ current_material.id }}">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">{% if material %}Редактирование{% else %}Новый материал{% endif %}</h2>
+
+    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        <input type="hidden" name="id" value="{{ material.id if material }}">
+
+        <!-- Поле названия -->
+        <div class="mb-4">
+            <label for="title" class="form-label">Название *</label>
+            <input type="text" id="title" name="title"
+                   class="form-control form-control-lg {% if errors and 'title' in errors %}is-invalid{% endif %}"
+                   value="{{ material.title if material }}" required>
+            <div class="invalid-feedback">
+                Пожалуйста, укажите название материала
+            </div>
+        </div>
+
+        <!-- Выбор типа контента -->
+        <div class="mb-4">
+            <label for="type" class="form-label">Тип контента *</label>
+            <select id="type" name="type" class="form-select form-select-lg" required>
+                <option value="">Выберите тип...</option>
+                {% for type in TypeContent %}
+                <option value="{{ type.value }}"
+                    {% if material and material.type == type %}selected{% endif %}>
+                    {{ type.value|capitalize }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Загрузка файла -->
+        <div class="mb-4">
+            <label for="file" class="form-label">Файл {% if not material %}*{% endif %}</label>
+            <input type="file" id="file" name="file"
+                   class="form-control form-control-lg {% if errors and 'file' in errors %}is-invalid{% endif %}"
+                   {% if not material %}required{% endif %}>
+            <div class="form-text">
+                Максимальный размер файла: 100MB. Допустимые форматы:
+                изображения (JPEG, PNG, GIF), видео (MP4, MOV), документы (PDF, TXT)
+            </div>
+            {% if material and material.content_url %}
+            <div class="mt-2">
+                <i class="bi bi-file-earmark-check"></i>
+                Текущий файл: {{ material.content_url.split('/')[-1] }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Категория -->
+        <div class="mb-4">
+            <label for="category" class="form-label">Категория</label>
+            <input type="text" id="category" name="category"
+                   class="form-control form-control-lg"
+                   value="{{ material.category if material }}">
+        </div>
+
+        <!-- Описание -->
+        <div class="mb-4">
+            <label for="description" class="form-label">Описание</label>
+            <textarea id="description" name="description"
+                     class="form-control form-control-lg"
+                     rows="5">{{ material.description if material }}</textarea>
+        </div>
+
+        <!-- Кнопки -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+            <a href="/content" class="btn btn-secondary btn-lg">Отмена</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                {% if material %}Сохранить{% else %}Создать материал{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Валидация формы на клиенте
+(() => {
+  'use strict'
+
+  const forms = document.querySelectorAll('.needs-validation')
+
+  Array.from(forms).forEach(form => {
+    form.addEventListener('submit', event => {
+      if (!form.checkValidity()) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+
+      form.classList.add('was-validated')
+    }, false)
+  })
+})()
+</script>
+{% endblock %}
