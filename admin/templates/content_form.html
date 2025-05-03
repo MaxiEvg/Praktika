@@ -4,8 +4,11 @@
 <div class="container mt-5">
     <h2 class="mb-4">{% if material %}Редактирование{% else %}Новый материал{% endif %}</h2>
 
-    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-        <input type="hidden" name="id" value="{{ material.id if material }}">
+    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate action="/content/save">
+        <!-- Исправленное поле id -->
+        {% if material %}
+        <input type="hidden" name="id" value="{{ material.id }}">
+        {% endif %}
 
         <!-- Поле названия -->
         <div class="mb-4">
@@ -14,22 +17,33 @@
                    class="form-control form-control-lg {% if errors and 'title' in errors %}is-invalid{% endif %}"
                    value="{{ material.title if material }}" required>
             <div class="invalid-feedback">
-                Пожалуйста, укажите название материала
+                {% if errors and 'title' in errors %}
+                    {{ errors.title }}
+                {% else %}
+                    Пожалуйста, укажите название материала
+                {% endif %}
             </div>
         </div>
 
         <!-- Выбор типа контента -->
         <div class="mb-4">
             <label for="type" class="form-label">Тип контента *</label>
-            <select id="type" name="type" class="form-select form-select-lg" required>
+            <select id="type" name="type" class="form-select form-select-lg {% if errors and 'type' in errors %}is-invalid{% endif %}" required>
                 <option value="">Выберите тип...</option>
                 {% for type in TypeContent %}
                 <option value="{{ type.value }}"
-                    {% if material and material.type == type %}selected{% endif %}>
+                    {% if material and material.type.value == type.value %}selected{% endif %}>
                     {{ type.value|capitalize }}
                 </option>
                 {% endfor %}
             </select>
+            <div class="invalid-feedback">
+                {% if errors and 'type' in errors %}
+                    {{ errors.type }}
+                {% else %}
+                    Пожалуйста, выберите тип контента
+                {% endif %}
+            </div>
         </div>
 
         <!-- Загрузка файла -->
@@ -48,22 +62,33 @@
                 Текущий файл: {{ material.content_url.split('/')[-1] }}
             </div>
             {% endif %}
+            <div class="invalid-feedback">
+                {% if errors and 'file' in errors %}
+                    {{ errors.file }}
+                {% endif %}
+            </div>
         </div>
 
         <!-- Категория -->
         <div class="mb-4">
             <label for="category" class="form-label">Категория</label>
             <input type="text" id="category" name="category"
-                   class="form-control form-control-lg"
+                   class="form-control form-control-lg {% if errors and 'category' in errors %}is-invalid{% endif %}"
                    value="{{ material.category if material }}">
+            <div class="invalid-feedback">
+                {{ errors.category if errors and 'category' in errors }}
+            </div>
         </div>
 
         <!-- Описание -->
         <div class="mb-4">
             <label for="description" class="form-label">Описание</label>
             <textarea id="description" name="description"
-                     class="form-control form-control-lg"
+                     class="form-control form-control-lg {% if errors and 'description' in errors %}is-invalid{% endif %}"
                      rows="5">{{ material.description if material }}</textarea>
+            <div class="invalid-feedback">
+                {{ errors.description if errors and 'description' in errors }}
+            </div>
         </div>
 
         <!-- Кнопки -->
