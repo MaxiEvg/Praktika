@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>План: {{ plan.name }}</h1>
+  <p>{{ plan.description }}</p>
+  <hr>
+  <h2>Этапы</h2>
+
+  <div id="stages-list" class="list-group mb-3">
+    {% for s in stages %}
+    <div class="list-group-item d-flex align-items-center" data-id="{{ s.id }}">
+      <span class="me-3 drag-handle" style="cursor: grab;">≡</span>
+      <div class="flex-grow-1">
+        <strong>{{ s.sequence_number }}. {{ s.title }}</strong><br>
+        {% if s.content %} Контент: {{ s.content.title }}<br>{% endif %}
+        {% if s.tests %}
+          Тест: {{ s.tests[0].title }}
+        {% endif %}
+      </div>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary" onclick="editStage({{ s.id }})">Изменить</button>
+        <form method="post" action="{{ url_for('delete_stage', plan_id=plan.id, stage_id=s.id) }}" style="display:inline">
+          <button class="btn btn-sm btn-outline-danger">Удалить</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <button class="btn btn-primary mb-5" onclick="showAddForm()">Добавить этап</button>
+
+  <!-- Hidden form for add/edit -->
+  <div id="stage-form" style="display:none;">
+    <h3 id="form-title">Новый этап</h3>
+    <form method="post" action="{{ url_for('add_stage', plan_id=plan.id) }}">
+      <input type="hidden" name="stage_id" id="stage-id">
+      <div class="mb-3">
+        <label>Заголовок</label>
+        <input name="title" id="stage-title" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label>Контент</label>
+        <select name="content_id" class="form-select">
+          <option value="">— не задано —</option>
+          {% for m in materials %}
+            <option value="{{ m.id }}">{{ m.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label>Тест</label>
+        <select name="test_id" class="form-select">
+          <option value="">— не задано —</option>
+          {% for t in tests %}
+            <option value="{{ t.id }}">{{ t.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-success">Сохранить этап</button>
+      <button type="button" class="btn btn-link" onclick="hideAddForm()">Отмена</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+  // initialize drag‑and‑drop
+  new Sortable(document.getElementById('stages-list'), {
+    handle: '.drag-handle',
+    animation: 150,
+    onEnd: function(evt){
+      // collect new order of IDs
+      const ids = Array.from(evt.to.children)
+        .map(el => el.getAttribute('data-id'));
+      fetch('{{ url_for("reorder_stages", plan_id=plan.id) }}', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ order: ids })
+      });
+    }
+  });
+
+  function showAddForm(){
+    document.getElementById('stage-form').style.display = 'block';
+  }
+  function hideAddForm(){
+    document.getElementById('stage-form').style.display = 'none';
+  }
+  function editStage(id){
+    // you could pre‑fill via another AJAX call; for brevity we just navigate
+    window.location = `{{ url_for("plan_detail", plan_id=plan.id) }}?edit_stage=${id}`;
+  }
+</script>
+{% endblock %}

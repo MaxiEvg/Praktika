@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>{{ plan and "Редактировать" or "Создать" }} план адаптации</h1>
+
+  <form id="plan-form" method="post" action="{{ url_for('create_update_plan') }}">
+    {% if plan %}
+      <input type="hidden" name="plan_id" value="{{ plan.id }}">
+    {% endif %}
+
+    <!-- Plan metadata -->
+    <div class="mb-3">
+      <label class="form-label">Название</label>
+      <input name="name" class="form-control" value="{{ plan.name if plan }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Описание</label>
+      <textarea name="description" class="form-control">{{ plan.description if plan }}</textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Позиция</label>
+      <select name="position_id" class="form-select">
+        <option value="">— не выбрано —</option>
+        {% for pos in positions %}
+          <option value="{{ pos.id }}" {% if plan and plan.position_id == pos.id %}selected{% endif %}>
+            {{ pos.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <hr>
+
+    <!-- Stages -->
+    <h2>Этапы</h2>
+    <div id="stages-container" class="list-group mb-3"></div>
+    <button id="add-stage-btn" type="button" class="btn btn-outline-primary mb-4">
+      Добавить этап
+    </button>
+
+    <!-- Сериализация блоков этапов -->
+    <input type="hidden" id="stages-data" name="stages_data" value="[]">
+
+    <button type="submit" class="btn btn-success">Сохранить план</button>
+  </form>
+</div>
+
+<!-- Шаблон одного блока этапа -->
+<template id="stage-template">
+  <div class="list-group-item d-flex align-items-start stage-item">
+    <span class="me-3 drag-handle" style="cursor: grab;">≡</span>
+    <div class="flex-grow-1">
+      <div class="mb-2">
+        <label class="form-label">Заголовок этапа</label>
+        <input type="text" class="form-control stage-title">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Контент</label>
+        <select class="form-select stage-content">
+          <option value="">— не задано —</option>
+          {% for m in materials %}
+            <option value="{{ m.id }}">{{ m.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Тест</label>
+        <select class="form-select stage-test">
+          <option value="">— не задано —</option>
+          {% for t in tests %}
+            <option value="{{ t.id }}">{{ t.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-danger remove-stage-btn">Удалить</button>
+  </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('stages-container');
+  const template  = document.getElementById('stage-template').content;
+  const addBtn    = document.getElementById('add-stage-btn');
+  const dataInput = document.getElementById('stages-data');
+  const form      = document.getElementById('plan-form');
+
+  // Инициализируем drag&drop
+  Sortable.create(container, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+  });
+
+  // Добавление нового блока
+  addBtn.addEventListener('click', () => {
+    const clone = document.importNode(template, true);
+    const item  = clone.querySelector('.stage-item');
+    item.querySelector('.remove-stage-btn')
+        .addEventListener('click', () => item.remove());
+    container.appendChild(clone);
+  });
+
+  // При submit собираем все блоки в JSON
+  form.addEventListener('submit', () => {
+    const stages = [];
+    Array.from(container.children).forEach(item => {
+      stages.push({
+        title:      item.querySelector('.stage-title').value,
+        content_id: item.querySelector('.stage-content').value || null,
+        test_id:    item.querySelector('.stage-test').value    || null
+      });
+    });
+    dataInput.value = JSON.stringify(stages);
+  });
+
+  // Предзаполнение при редактировании
+  {% if plan %}
+  const existing = {{ stages|tojson }};
+  existing.forEach(st => {
+    const clone = document.importNode(template, true);
+    const item  = clone.querySelector('.stage-item');
+    item.querySelector('.stage-title').value = st.title;
+    if (st.content_id) item.querySelector('.stage-content').value = st.content_id;
+    if (st.test_id)    item.querySelector('.stage-test').value    = st.test_id;
+    item.querySelector('.remove-stage-btn')
+        .addEventListener('click', () => item.remove());
+    container.appendChild(clone);
+  });
+  {% endif %}
+});
+</script>
+<style>
+  .sortable-ghost   { opacity: 0.4; }
+  .sortable-chosen  { background: #e0f7fa; }
+</style>
+{% endblock %}
