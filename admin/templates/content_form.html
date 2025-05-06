@@ -1,123 +1,112 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">{% if material %}Редактирование{% else %}Новый материал{% endif %}</h2>
+  <h2>{{ material and "Редактирование материала" or "Новый материал" }}</h2>
 
-    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate action="/content/save">
-        <!-- Исправленное поле id -->
-        {% if material %}
-        <input type="hidden" name="id" value="{{ material.id }}">
-        {% endif %}
+  <form
+    method="post"
+    enctype="multipart/form-data"
+    action="{{ url_for('create_update_content') }}"
+    class="needs-validation"
+    novalidate
+  >
+    {# Если редактируем — передаём ID #}
+    {% if material %}
+      <input type="hidden" name="material_id" value="{{ material.id }}">
+    {% endif %}
 
-        <!-- Поле названия -->
-        <div class="mb-4">
-            <label for="title" class="form-label">Название *</label>
-            <input type="text" id="title" name="title"
-                   class="form-control form-control-lg {% if errors and 'title' in errors %}is-invalid{% endif %}"
-                   value="{{ material.title if material }}" required>
-            <div class="invalid-feedback">
-                {% if errors and 'title' in errors %}
-                    {{ errors.title }}
-                {% else %}
-                    Пожалуйста, укажите название материала
-                {% endif %}
-            </div>
+    {# Название #}
+    <div class="mb-3">
+      <label for="title" class="form-label">Название *</label>
+      <input
+        id="title" name="title" type="text" class="form-control"
+        required
+        value="{{ material.title if material else '' }}"
+      >
+      <div class="invalid-feedback">Укажите название.</div>
+    </div>
+
+    {# Тип контента #}
+    <div class="mb-3">
+      <label for="type" class="form-label">Тип контента *</label>
+      <select
+        id="type" name="type" class="form-select"
+        required
+      >
+        <option value="" disabled {% if not material %}selected{% endif %}>
+          — выберите —
+        </option>
+        {% for t in TypeContent %}
+          <option
+            value="{{ t.value }}"
+            {% if material and material.type.value == t.value %}selected{% endif %}
+          >{{ t.value|capitalize }}</option>
+        {% endfor %}
+      </select>
+      <div class="invalid-feedback">Выберите тип контента.</div>
+    </div>
+
+    {# Файл #}
+    <div class="mb-3">
+      <label for="file" class="form-label">
+        Файл {% if not material %}<span class="text-danger">*</span>{% endif %}
+      </label>
+      <input
+        id="file" name="file" type="file" class="form-control"
+        {% if not material %}required{% endif %}
+      >
+      <div class="form-text">
+        JPEG, PNG, GIF, MP4, MOV, PDF, TXT (до 100 МБ)
+      </div>
+      {% if material and material.content_url %}
+        <div class="mt-2">
+          Текущий файл:
+          <strong>{{ material.content_url.split('/')[-1] }}</strong>
         </div>
+      {% endif %}
+    </div>
 
-        <!-- Выбор типа контента -->
-        <div class="mb-4">
-            <label for="type" class="form-label">Тип контента *</label>
-            <select id="type" name="type" class="form-select form-select-lg {% if errors and 'type' in errors %}is-invalid{% endif %}" required>
-                <option value="">Выберите тип...</option>
-                {% for type in TypeContent %}
-                <option value="{{ type.value }}"
-                    {% if material and material.type.value == type.value %}selected{% endif %}>
-                    {{ type.value|capitalize }}
-                </option>
-                {% endfor %}
-            </select>
-            <div class="invalid-feedback">
-                {% if errors and 'type' in errors %}
-                    {{ errors.type }}
-                {% else %}
-                    Пожалуйста, выберите тип контента
-                {% endif %}
-            </div>
-        </div>
+    {# Категория #}
+    <div class="mb-3">
+      <label for="category" class="form-label">Категория</label>
+      <input
+        id="category" name="category" type="text" class="form-control"
+        value="{{ material.category if material else '' }}"
+      >
+    </div>
 
-        <!-- Загрузка файла -->
-        <div class="mb-4">
-            <label for="file" class="form-label">Файл {% if not material %}*{% endif %}</label>
-            <input type="file" id="file" name="file"
-                   class="form-control form-control-lg {% if errors and 'file' in errors %}is-invalid{% endif %}"
-                   {% if not material %}required{% endif %}>
-            <div class="form-text">
-                Максимальный размер файла: 100MB. Допустимые форматы:
-                изображения (JPEG, PNG, GIF), видео (MP4, MOV), документы (PDF, TXT)
-            </div>
-            {% if material and material.content_url %}
-            <div class="mt-2">
-                <i class="bi bi-file-earmark-check"></i>
-                Текущий файл: {{ material.content_url.split('/')[-1] }}
-            </div>
-            {% endif %}
-            <div class="invalid-feedback">
-                {% if errors and 'file' in errors %}
-                    {{ errors.file }}
-                {% endif %}
-            </div>
-        </div>
+    {# Описание #}
+    <div class="mb-3">
+      <label for="description" class="form-label">Описание</label>
+      <textarea
+        id="description" name="description" class="form-control" rows="4"
+      >{{ material.description if material else '' }}</textarea>
+    </div>
 
-        <!-- Категория -->
-        <div class="mb-4">
-            <label for="category" class="form-label">Категория</label>
-            <input type="text" id="category" name="category"
-                   class="form-control form-control-lg {% if errors and 'category' in errors %}is-invalid{% endif %}"
-                   value="{{ material.category if material }}">
-            <div class="invalid-feedback">
-                {{ errors.category if errors and 'category' in errors }}
-            </div>
-        </div>
-
-        <!-- Описание -->
-        <div class="mb-4">
-            <label for="description" class="form-label">Описание</label>
-            <textarea id="description" name="description"
-                     class="form-control form-control-lg {% if errors and 'description' in errors %}is-invalid{% endif %}"
-                     rows="5">{{ material.description if material }}</textarea>
-            <div class="invalid-feedback">
-                {{ errors.description if errors and 'description' in errors }}
-            </div>
-        </div>
-
-        <!-- Кнопки -->
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
-            <a href="/content" class="btn btn-secondary btn-lg">Отмена</a>
-            <button type="submit" class="btn btn-primary btn-lg">
-                {% if material %}Сохранить{% else %}Создать материал{% endif %}
-            </button>
-        </div>
-    </form>
+    {# Кнопки #}
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{{ url_for('list_content') }}" class="btn btn-secondary">Отмена</a>
+      <button type="submit" class="btn btn-primary">
+        {{ material and "Сохранить" or "Создать" }}
+      </button>
+    </div>
+  </form>
 </div>
 
+<!-- Bootstrap validation -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Валидация формы на клиенте
-(() => {
-  'use strict'
-
-  const forms = document.querySelectorAll('.needs-validation')
-
-  Array.from(forms).forEach(form => {
-    form.addEventListener('submit', event => {
-      if (!form.checkValidity()) {
-        event.preventDefault()
-        event.stopPropagation()
-      }
-
-      form.classList.add('was-validated')
-    }, false)
-  })
-})()
+  (function(){
+    'use strict';
+    document.querySelectorAll('.needs-validation').forEach(form => {
+      form.addEventListener('submit', e => {
+        if (!form.checkValidity()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      });
+    });
+  })();
 </script>
 {% endblock %}

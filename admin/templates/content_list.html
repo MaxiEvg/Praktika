@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>Все материалы</h1>
+  <a href="{{ url_for('create_content_form') }}" class="btn btn-primary mb-3">Новый материал</a>
+  <ul class="list-group">
+    {% for m in materials %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <a href="{{ url_for('content_view', material_id=m.id) }}">{{ m.title }}</a>
+      <div>
+        <a href="{{ url_for('edit_content_form', material_id=m.id) }}" class="btn btn-sm btn-outline-secondary">Ред.</a>
+        <form method="post" action="{{ url_for('delete_content', material_id=m.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+        </form>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

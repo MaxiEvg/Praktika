@@ -35,9 +35,9 @@ IntPk = Annotated[int, mapped_column(primary_key=True)]
 
 # Correct Enum definitions
 class TypeContent(str, Enum):
-    IMAGE = "image"
-    VIDEO = "video"
-    DOCUMENT = "document"
+    IMAGE    = "IMAGE"
+    VIDEO    = "VIDEO"
+    DOCUMENT = "DOCUMENT"
 
 
 class ProgressStatus(str, Enum):
