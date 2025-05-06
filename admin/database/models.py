@@ -85,9 +85,10 @@ class AdaptationStage(Base):
     title: Mapped[str] = mapped_column(nullable=False)
     sequence_number: Mapped[Optional[int]]
     content_id: Mapped[Optional[int]] = mapped_column(ForeignKey("content_material.id"))
+    test_id: Mapped[Optional[int]] = mapped_column(ForeignKey("test.id"))
     plan: Mapped["AdaptationPlan"] = relationship(back_populates="stages")
     content: Mapped[Optional["ContentMaterial"]] = relationship(back_populates="adaptation_stages")
-    tests: Mapped[List["Test"]] = relationship(
+    test: Mapped[Optional["Test"]] = relationship(
         back_populates="stage",
         cascade="all, delete-orphan"
     )
@@ -195,7 +196,7 @@ class Test(Base):
         server_default=text("TIMEZONE('utc-3', now())")
     )
     updated_at: Mapped[Optional[datetime]]
-    stage: Mapped[Optional["AdaptationStage"]] = relationship(back_populates="tests")
+    stage: Mapped[Optional["AdaptationStage"]] = relationship(back_populates="test")
     questions: Mapped[List["TestQuestion"]] = relationship(
         back_populates="test",
         cascade="all, delete"
