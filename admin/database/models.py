@@ -59,6 +59,19 @@ class UserRole(str, Enum):
     EMPLOYEE = "employee"
     HR = "HR"
 
+class Positions(Base):
+    __tablename__ = 'positions'
+
+    id: Mapped[IntPk]
+    name: Mapped[str]
+    description: Mapped[Optional[str]]
+    adaptation_plans: Mapped[List["AdaptationPlan"]] = relationship(
+        back_populates="position"
+    )
+    users: Mapped[List["User"]] = relationship(
+        back_populates="position",
+        cascade="all, delete"
+    )
 
 class AdaptationPlan(Base):
     __tablename__ = 'adaptation_plans'
@@ -72,8 +85,10 @@ class AdaptationPlan(Base):
     position_id: Mapped[int] = mapped_column(ForeignKey('positions.id', ondelete="CASCADE"))
     position: Mapped["Positions"] = relationship(back_populates="adaptation_plans")
     stages: Mapped[List["AdaptationStage"]] = relationship(
+        "AdaptationStage",
         back_populates="plan",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
 
@@ -85,27 +100,16 @@ class AdaptationStage(Base):
     title: Mapped[str] = mapped_column(nullable=False)
     sequence_number: Mapped[Optional[int]]
     content_id: Mapped[Optional[int]] = mapped_column(ForeignKey("content_material.id"))
-    test_id: Mapped[Optional[int]] = mapped_column(ForeignKey("test.id"))
+    test_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("test.id"), nullable=True
+    )
     plan: Mapped["AdaptationPlan"] = relationship(back_populates="stages")
-    content: Mapped[Optional["ContentMaterial"]] = relationship(back_populates="adaptation_stages")
+    content: Mapped[Optional["ContentMaterial"]] = relationship(back_populates="adaptation_stages", lazy="selectin")
     test: Mapped[Optional["Test"]] = relationship(
-        back_populates="stage",
-        cascade="all, delete-orphan"
-    )
-
-
-class Positions(Base):
-    __tablename__ = 'positions'
-
-    id: Mapped[IntPk]
-    name: Mapped[str]
-    description: Mapped[Optional[str]]
-    adaptation_plans: Mapped[List["AdaptationPlan"]] = relationship(
-        back_populates="position"
-    )
-    users: Mapped[List["User"]] = relationship(
-        back_populates="position",
-        cascade="all, delete"
+        "Test",
+        back_populates="stages",
+        foreign_keys=[test_id],
+        lazy="selectin"
     )
 
 
@@ -188,7 +192,6 @@ class Test(Base):
     id: Mapped[IntPk]
     title: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[Optional[str]]
-    stage_id: Mapped[Optional[int]] = mapped_column(ForeignKey("adaptation_stages.id"))
     instructions: Mapped[Optional[str]]
     test_type: Mapped[Optional[TestType]] = mapped_column(SQLEnum(TestType))
     passing_score: Mapped[Optional[int]]
@@ -196,7 +199,12 @@ class Test(Base):
         server_default=text("TIMEZONE('utc-3', now())")
     )
     updated_at: Mapped[Optional[datetime]]
-    stage: Mapped[Optional["AdaptationStage"]] = relationship(back_populates="test")
+    stages: Mapped[List[AdaptationStage]] = relationship(
+        "AdaptationStage",
+        back_populates="test",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
     questions: Mapped[List["TestQuestion"]] = relationship(
         back_populates="test",
         cascade="all, delete"
