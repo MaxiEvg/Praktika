@@ -271,18 +271,22 @@ class User(Base):
     __tablename__ = 'user'
 
     id: Mapped[IntPk]
-    telegram_id: Mapped[str] = mapped_column(unique=True, nullable=False)
-    first_name: Mapped[str]
-    last_name: Mapped[str]
-    username: Mapped[str]
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(512), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    last_login: Mapped[Optional[datetime]]
-    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole))
-    registration_date: Mapped[date]
-    department_id: Mapped[int] = mapped_column(ForeignKey("department.id"))
-    position_id: Mapped[int] = mapped_column(ForeignKey("positions.id"))
+    telegram_id:    Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    first_name:     Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    last_name:      Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    username:       Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    email:          Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    hashed_password:Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    is_active:      Mapped[bool]           = mapped_column(Boolean, default=True, nullable=False)
+    last_login:     Mapped[Optional[datetime]]
+    role:           Mapped[UserRole]       = mapped_column(SQLEnum(UserRole), nullable=False)
+    registration_date: Mapped[datetime]    = mapped_column(
+        DateTime(timezone=False),
+        server_default=text("now()"),
+        nullable=False
+    )
+    department_id:  Mapped[Optional[int]]  = mapped_column(ForeignKey("department.id"), nullable=True)
+    position_id:    Mapped[Optional[int]]  = mapped_column(ForeignKey("positions.id"),  nullable=True)
 
     # Relationships
     test_answers: Mapped[List["UserTestAnswer"]] = relationship(
