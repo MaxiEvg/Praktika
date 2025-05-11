@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-5">
-  <h1>Планы адаптации</h1>
-  <a href="{{ url_for('create_plan_form') }}" class="btn btn-primary mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Планы адаптации</h1>
+    <a href="{{ url_for('create_plan_form') }}" class="btn btn-primary mb-3">
     Новый план
-  </a>
+    </a>
+  </div>
   <ul class="list-group">
     {% for plan in plans %}
       <li class="list-group-item d-flex justify-content-between align-items-center">

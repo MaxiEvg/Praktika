@@ -10,7 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
+from fastapi.security import HTTPBearer
+from fastapi import Depends, HTTPException, status
 from .templating import templates
 from database.models import Test, TestQuestion, TestOption
 from db_helper import db_helper

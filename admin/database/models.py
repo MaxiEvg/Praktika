@@ -56,8 +56,8 @@ class NotificationStatus(str, Enum):
 
 
 class UserRole(str, Enum):
-    EMPLOYEE = "employee"
-    HR = "HR"
+    EMPLOYEE = "EMPLOYEE"
+    ADMIN = "ADMIN"
 
 class Positions(Base):
     __tablename__ = 'positions'
@@ -275,6 +275,10 @@ class User(Base):
     first_name: Mapped[str]
     last_name: Mapped[str]
     username: Mapped[str]
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(512), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_login: Mapped[Optional[datetime]]
     role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole))
     registration_date: Mapped[date]
     department_id: Mapped[int] = mapped_column(ForeignKey("department.id"))

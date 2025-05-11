@@ -15,8 +15,3 @@ async def dashboard(request: Request):
 @router.get("/welcome", response_class=HTMLResponse)
 async def welcome(request: Request):
     return templates.TemplateResponse("welcome.html", {"request": request})
-
-# ← новый эндпоинт под ссылку из навигации
-@router.get("/create_test", response_class=HTMLResponse)
-async def create_test(request: Request):
-    return templates.TemplateResponse("create_test.html", {"request": request})
