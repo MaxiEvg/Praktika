@@ -1,21 +1,33 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables
-load_dotenv()
+load_dotenv(Path(__file__).parent / '.env')
 
 class Config:
     # Bot Configuration
-    BOT_TOKEN = os.getenv('BOT_TOKEN', '7533441974:AAGU815eL1cHblfYeaURKFus7GCCcjCiwa0')
+    BOT_TOKEN = os.getenv('BOT_TOKEN')
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN environment variable is not set")
+    
+    # API Configuration
+    API_BASE_URL = os.getenv('API_BASE_URL', 'http://admin:8000/api/v1')
     
     # Database Configuration
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///tests.db')
+    DB_USER = os.getenv('POSTGRES_USER', 'user')
+    DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', 'password')
+    DB_HOST = os.getenv('POSTGRES_HOST', 'postgres')  # Changed from localhost to postgres
+    DB_PORT = os.getenv('POSTGRES_PORT', '5432')
+    DB_NAME = os.getenv('POSTGRES_DB', 'AdaptaCore')
+    
+    SQLALCHEMY_DATABASE_URI = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Logging Configuration
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOG_FILE = 'bot.log'
+    LOG_FILE = os.getenv('LOG_FILE', 'bot.log')
     
     # Security
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
