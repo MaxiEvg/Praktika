@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 
-from admin.core.config import settings
+from core.config import settings
 from database.models import Base
 
 class DatabaseHelper:
@@ -19,6 +19,13 @@ class DatabaseHelper:
             echo_pool=echo_pool,
             pool_size=pool_size,
             max_overflow=max_overflow,
+            connect_args={
+                "server_settings": {
+                    "application_name": "adaptacore",
+                    "timezone": "UTC",
+                },
+                "command_timeout": 60,
+            }
         )
         self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=self.engine,
@@ -35,13 +42,17 @@ class DatabaseHelper:
             yield session
 
     async def create_tables(self):
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        try:
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            print(f"Error creating tables: {e}")
+            raise
 
 db_helper = DatabaseHelper(
     url=str(settings.db.url),
-    echo=settings.db.echo,
-    echo_pool=settings.db.echo_pool,
-    pool_size=settings.db.pool_size,
-    max_overflow=settings.db.max_overflow,
+    echo=True,
+    echo_pool=True,
+    pool_size=5,
+    max_overflow=10,
 )
