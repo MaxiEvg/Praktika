@@ -4,16 +4,20 @@ import logging
 from uuid import uuid4
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, UploadFile, File, Form
+import aiofiles
+from fastapi import (
+    APIRouter, Depends, Request,
+    HTTPException, UploadFile, File, Form, status
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi.security import HTTPBearer
-from fastapi import Depends, HTTPException, status
+
 from .templating import templates
-from database.models import Test, TestQuestion, TestOption
+from .auth import get_current_user_from_cookie  # Зависимость авторизации
+from database.models import Test, TestQuestion, TestOption, User
 from db_helper import db_helper
 
 logger = logging.getLogger(__name__)
@@ -23,36 +27,48 @@ UPLOAD_DIR = os.path.join(os.getcwd(), "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 async def get_session() -> AsyncSession:
-    async for s in db_helper.session_getter():
-        yield s
+    async with db_helper.session_factory() as session:
+        yield session
 
 router = APIRouter()
 router.mount("/static", StaticFiles(directory="static"), name="static")
 
+# 1) Список тестов — только для авторизованных
 @router.get("/tests", response_class=HTMLResponse)
-async def list_tests(request: Request, session: AsyncSession = Depends(get_session)):
+async def list_tests(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),
+    session: AsyncSession = Depends(get_session)
+):
     logger.info("Получение списка всех тестов")
     stmt = select(Test).options(
         selectinload(Test.questions).selectinload(TestQuestion.options)
     )
     result = await session.execute(stmt)
     tests = result.scalars().all()
-    return templates.TemplateResponse("tests_list.html", {"request": request, "tests": tests})
+    return templates.TemplateResponse("tests_list.html", {"request": request, "user": user, "tests": tests})
 
+# 2) Форма создания — только авторизованные
 @router.get("/tests/form", response_class=HTMLResponse)
-async def create_test_form(request: Request):
+async def create_test_form(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie)
+):
     logger.info("Отображение формы создания нового теста")
     return templates.TemplateResponse("test_form.html", {
         "request": request,
+        "user": user,
         "test": None,
         "question_count": 0,
         "questions_data": []
     })
 
+# 3) Форма редактирования — только авторизованные
 @router.get("/tests/form/{test_id}", response_class=HTMLResponse)
 async def edit_test_form(
     request: Request,
     test_id: int,
+    user: User = Depends(get_current_user_from_cookie),
     session: AsyncSession = Depends(get_session),
 ):
     logger.info(f"Редактирование теста с ID {test_id}")
@@ -69,16 +85,10 @@ async def edit_test_form(
         logger.error(f"Тест с ID {test_id} не найден")
         raise HTTPException(status_code=404, detail="Test not found")
 
-    # Подготавливаем список вопросов для сериализации в JS
     questions_data = []
     for q in test.questions:
-        answers = []
-        correct_index = 0
-        for idx, opt in enumerate(q.options):
-            answers.append(opt.option_text)
-            if opt.is_correct:
-                correct_index = idx
-
+        answers = [opt.option_text for opt in q.options]
+        correct_index = next((idx for idx, opt in enumerate(q.options) if opt.is_correct), 0)
         questions_data.append({
             "text": q.question_text,
             "answers": answers,
@@ -90,12 +100,14 @@ async def edit_test_form(
         "test_edit.html",
         {
             "request": request,
+            "user": user,
             "test": test,
             "question_count": len(test.questions),
             "questions_data": questions_data
         }
     )
 
+# 4) Создать или обновить — только авторизованные
 @router.post("/tests/", response_class=RedirectResponse)
 async def create_update_test(
     request: Request,
@@ -104,22 +116,20 @@ async def create_update_test(
     description: str = Form(""),
     questions_data: str = Form(...),
     files: List[UploadFile] = File(default=[]),
+    user: User = Depends(get_current_user_from_cookie),
     session: AsyncSession = Depends(get_session),
 ):
     if test_id:
         logger.info(f"Обновление теста с ID {test_id}")
-        stmt = (
-            select(Test)
-            .options(
-                selectinload(Test.questions).selectinload(TestQuestion.options)
-            )
-            .filter(Test.id == test_id)
-        )
+        stmt = select(Test).options(
+            selectinload(Test.questions).selectinload(TestQuestion.options)
+        ).filter(Test.id == test_id)
         result = await session.execute(stmt)
         test = result.scalars().first()
         if not test:
             logger.error(f"Тест с ID {test_id} не найден")
             raise HTTPException(status_code=404, detail="Test not found")
+        # удаляем старые вопросы
         for q in list(test.questions):
             await session.delete(q)
     else:
@@ -151,8 +161,8 @@ async def create_update_test(
                 ext = os.path.splitext(upload.filename)[1]
                 fname = f"{uuid4().hex}{ext}"
                 fpath = os.path.join(UPLOAD_DIR, fname)
-                with open(fpath, "wb") as out:
-                    out.write(await upload.read())
+                async with aiofiles.open(fpath, "wb") as out:
+                    await out.write(await upload.read())
                 q_obj.image_path = f"uploads/{fname}"
 
         for a_idx, answer in enumerate(q.get("answers", [])):
@@ -165,28 +175,35 @@ async def create_update_test(
 
     await session.commit()
     logger.info(f"Тест с ID {test.id} успешно сохранён")
-    return RedirectResponse(url=f"/tests/{test.id}", status_code=303)
+    return RedirectResponse(url=f"/tests/{test.id}", status_code=status.HTTP_303_SEE_OTHER)
 
+# 5) Просмотр теста — только авторизованные
 @router.get("/tests/{test_id}", response_class=HTMLResponse)
-async def test_view(request: Request, test_id: int, session: AsyncSession = Depends(get_session)):
+async def test_view(
+    request: Request,
+    test_id: int,
+    user: User = Depends(get_current_user_from_cookie),
+    session: AsyncSession = Depends(get_session)
+):
     logger.info(f"Получение теста с ID {test_id} для просмотра")
-    stmt = (
-        select(Test)
-        .options(
-            selectinload(Test.questions).selectinload(TestQuestion.options)
-        )
-        .filter(Test.id == test_id)
-    )
+    stmt = select(Test).options(
+        selectinload(Test.questions).selectinload(TestQuestion.options)
+    ).filter(Test.id == test_id)
     result = await session.execute(stmt)
     test = result.scalars().first()
     if not test:
         logger.error(f"Тест с ID {test_id} не найден")
         raise HTTPException(status_code=404, detail="Test not found")
 
-    return templates.TemplateResponse("test_view.html", {"request": request, "test": test})
+    return templates.TemplateResponse("test_view.html", {"request": request, "user": user, "test": test})
 
+# 6) Удаление теста — только авторизованные
 @router.post("/tests/{test_id}/delete", response_class=RedirectResponse)
-async def delete_test(test_id: int, session: AsyncSession = Depends(get_session)):
+async def delete_test(
+    test_id: int,
+    user: User = Depends(get_current_user_from_cookie),
+    session: AsyncSession = Depends(get_session)
+):
     logger.info(f"Удаление теста с ID {test_id}")
     test = await session.get(Test, test_id)
     if test:
@@ -195,4 +212,4 @@ async def delete_test(test_id: int, session: AsyncSession = Depends(get_session)
         logger.info(f"Тест с ID {test_id} удалён")
     else:
         logger.warning(f"Тест с ID {test_id} не найден при удалении")
-    return RedirectResponse(url="/tests", status_code=303)
+    return RedirectResponse(url="/tests", status_code=status.HTTP_303_SEE_OTHER)

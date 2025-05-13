@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center mt-5">
+  <h1 class="display-4">401 — Не авторизованы</h1>
+  <p class="lead">{{ error or "Пожалуйста, войдите, чтобы продолжить." }}</p>
+  <a href="/login" class="btn btn-primary">Войти</a>
+</div>
+{% endblock %}

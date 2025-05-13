@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 
 from core.config import settings
 from api import router as api_router
+from api.errors import register_error_handlers
+from api.auth_middleware import register_auth_middleware
 from db_helper import db_helper
 
 
@@ -23,10 +25,15 @@ main_app = FastAPI(
 )
 
 main_app.mount("/static", StaticFiles(directory="static"), name="static")
+
+register_auth_middleware(main_app)
 main_app.include_router(
     api_router,
     prefix=settings.api.prefix,
 )
+register_error_handlers(main_app)
+
+
 
 if __name__ == "__main__":
     uvicorn.run(

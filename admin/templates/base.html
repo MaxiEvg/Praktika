@@ -33,23 +33,38 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Главная</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/users">Сотрудники</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/plans">Планы</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/content">Контенты</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/tests">Тесты</a>
-                    </li>
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/users">Сотрудники</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/plans">Планы</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/content">Контенты</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/tests">Тесты</a></li>
                 </ul>
+
+                {% if user %}
+                <ul class="navbar-nav">
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                      {{ user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                      <li><a class="dropdown-item" href="/profile">Профиль</a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <form method="post" action="/logout" class="d-inline">
+                          <button class="dropdown-item" type="submit">Выйти</button>
+                        </form>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+                {% else %}
+                <ul class="navbar-nav">
+                  <li class="nav-item"><a class="nav-link" href="/login">Войти</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/register">Регистрация</a></li>
+                </ul>
+                {% endif %}
             </div>
         </div>
     </nav>

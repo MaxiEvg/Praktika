@@ -14,12 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .templating import templates
+from .auth import get_current_user_from_cookie  # Импорт зависимости авторизации
 from database.models import (
     AdaptationPlan,
     AdaptationStage,
     ContentMaterial,
     Test,
-    Positions
+    Positions,
+    User
 )
 from db_helper import db_helper
 
@@ -41,7 +43,11 @@ async def get_session() -> AsyncSession:
 
 # ─── 1) Список планов адаптации ───────────────────────────────────────────────────────
 @router.get("/plans", response_class=HTMLResponse, name="list_plans")
-async def list_plans(request: Request, session: AsyncSession = Depends(get_session)):
+async def list_plans(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
+    session: AsyncSession = Depends(get_session)
+):
     """
     Список всех планов с должностями и этапами (жадная загрузка stages -> тесты)
     """
@@ -55,13 +61,17 @@ async def list_plans(request: Request, session: AsyncSession = Depends(get_sessi
     plans = result.scalars().all()
     return templates.TemplateResponse(
         "adaptation_list.html",
-        {"request": request, "plans": plans}
+        {"request": request, "user": user, "plans": plans}
     )
 
 
 # ─── 2) Форма создания нового плана ────────────────────────────────────────────────────
 @router.get("/plans/form", response_class=HTMLResponse)
-async def create_plan_form(request: Request, session: AsyncSession = Depends(get_session)):
+async def create_plan_form(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
+    session: AsyncSession = Depends(get_session)
+):
     logger.info("Отображение формы создания плана")
     materials = (await session.execute(select(ContentMaterial))).scalars().all()
     tests     = (await session.execute(select(Test))).scalars().all()
@@ -69,6 +79,7 @@ async def create_plan_form(request: Request, session: AsyncSession = Depends(get
 
     return templates.TemplateResponse("adaptation_form.html", {
         "request": request,
+        "user": user,
         "plan": None,
         "materials": materials,
         "tests": tests,
@@ -82,6 +93,7 @@ async def create_plan_form(request: Request, session: AsyncSession = Depends(get
 async def edit_plan_form(
     request: Request,
     plan_id: int,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
     session: AsyncSession = Depends(get_session)
 ):
     logger.info(f"Редактирование плана ID={plan_id}")
@@ -98,7 +110,6 @@ async def edit_plan_form(
     tests     = (await session.execute(select(Test))).scalars().all()
     positions = (await session.execute(select(Positions))).scalars().all()
 
-    # Подготовка существующих этапов для JS
     existing = []
     for s in sorted(plan.stages, key=lambda e: e.sequence_number or 0):
         existing.append({
@@ -109,6 +120,7 @@ async def edit_plan_form(
 
     return templates.TemplateResponse("adaptation_form.html", {
         "request": request,
+        "user": user,
         "plan": plan,
         "materials": materials,
         "tests": tests,
@@ -121,6 +133,7 @@ async def edit_plan_form(
 @router.post("/plans/", response_class=RedirectResponse)
 async def create_update_plan(
     request: Request,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
     plan_id: Optional[int]     = Form(None),
     name: str                  = Form(...),
     description: Optional[str] = Form(None),
@@ -136,7 +149,6 @@ async def create_update_plan(
         raise HTTPException(status_code=400, detail="Invalid stages JSON")
 
     async with session.begin():
-        # Если обновляем — удаляем старые этапы
         if plan_id:
             logger.info(f"Удаляем старые этапы для плана {plan_id}")
             await session.execute(delete(AdaptationStage).where(AdaptationStage.plan_id == plan_id))
@@ -148,12 +160,10 @@ async def create_update_plan(
             session.add(plan)
             await session.flush()
 
-        # Обновляем поля плана
         plan.name        = name
         plan.description = description
         plan.position_id = position_id
 
-        # Создаём новые этапы в указанном порядке
         for idx, st in enumerate(stages, start=1):
             cid = int(st["content_id"]) if st.get("content_id") else None
             tid = int(st["test_id"])    if st.get("test_id")    else None
@@ -167,7 +177,6 @@ async def create_update_plan(
             )
             session.add(stage)
 
-    # После session.begin() он автоматически коммитит, потому Redirect
     return RedirectResponse(f"/plans/{plan.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -176,6 +185,7 @@ async def create_update_plan(
 async def plan_detail(
     request: Request,
     plan_id: int,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
     session: AsyncSession = Depends(get_session)
 ):
     logger.info(f"Просмотр плана ID={plan_id}")
@@ -190,6 +200,7 @@ async def plan_detail(
     stages = sorted(plan.stages, key=lambda e: e.sequence_number or 0)
     return templates.TemplateResponse("adaptation_detail.html", {
         "request": request,
+        "user": user,
         "plan": plan,
         "stages": stages
     })
@@ -197,12 +208,12 @@ async def plan_detail(
 @router.post("/plans/delete/{plan_id}", name="delete_plan")
 async def delete_plan(
     plan_id: int,
+    user: User = Depends(get_current_user_from_cookie),  # Зависимость авторизации
     session: AsyncSession = Depends(get_session)
 ):
     logger.info(f"Удаление плана адаптации ID={plan_id}")
     plan = await session.get(AdaptationPlan, plan_id)
     if plan:
-        # удаляем все этапы (cascade="all, delete-orphan" уже в модели позаботится об этапах)
         await session.delete(plan)
         await session.commit()
         logger.info(f"План ID={plan_id} успешно удалён")

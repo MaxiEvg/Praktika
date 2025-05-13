@@ -9,6 +9,7 @@ from fastapi import (
     HTTPException,
     Request,
     status,
+    Cookie
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -24,37 +25,35 @@ from db_helper import db_helper
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Настройки JWT
+# ─── Настройки JWT ────────────────────────────────────────────────────────────
 SECRET_KEY = "your_secret_key_here"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 router = APIRouter()
 
-
+# ─── Зависимость: сессия ─────────────────────────────────────────────────────────
 async def get_session() -> AsyncSession:
     async with db_helper.session_factory() as session:
         yield session
 
-
+# ─── Утилиты для паролей ─────────────────────────────────────────────────────────
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
-
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-
+# ─── Создание токенов ─────────────────────────────────────────────────────────────
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -62,8 +61,11 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-
-async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_session)):
+# ─── Получить текущего пользователя из Authorization header ────────────────────────
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_session)
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -83,8 +85,31 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSe
         raise credentials_exception
     return user
 
+# ─── Получить текущего пользователя из cookie (SSR) ───────────────────────────────
+async def get_current_user_from_cookie(
+    request: Request,
+    access_token: Optional[str] = Cookie(None),
+    session: AsyncSession = Depends(get_session)
+) -> User:
+    if not access_token or not access_token.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    token = access_token.split(" ", 1)[1]
+    # Декодируем
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-# ─── Маршрут токена для SPA или API ────────────────────────────────────────────
+    result = await session.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user
+
+# ─── Маршрут токена для SPA/API ─────────────────────────────────────────────────
 @router.post("/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -102,12 +127,10 @@ async def login_for_access_token(
     refresh_token = create_refresh_token({"sub": user.username})
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-
-# ─── Веб-страницы: вход и регистрация ────────────────────────────────────────────
+# ─── Страницы входа/регистрации SSR ───────────────────────────────────────────────
 @router.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
-
 
 @router.post("/login", response_class=HTMLResponse)
 async def login_post(
@@ -119,25 +142,25 @@ async def login_post(
     result = await session.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
     if not user or not verify_password(password, user.hashed_password):
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "Неверное имя пользователя или пароль"
-        })
-    # Сохраняем дату последнего входа
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверное имя пользователя или пароль"})
     user.last_login = datetime.utcnow()
     await session.commit()
-    # Выполняем редирект на защищённую страницу
+
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    # При SSR можно хранить токен в куки
     access_token = create_access_token({"sub": user.username})
     response.set_cookie("access_token", f"Bearer {access_token}", httponly=True)
     return response
 
+@router.post("/logout", response_class=RedirectResponse)
+async def logout(request: Request):
+    # Чистим куки и перенаправляем на страницу входа
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie("access_token")
+    return response
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_get(request: Request):
     return templates.TemplateResponse("register.html", {"request": request, "error": None})
-
 
 @router.post("/register", response_class=HTMLResponse)
 async def register_post(
@@ -149,33 +172,21 @@ async def register_post(
     session: AsyncSession = Depends(get_session),
 ):
     if password != password_confirm:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Пароли не совпадают"
-        })
-
-    # Проверяем занятость логина/почты
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Пароли не совпадают"})
     existing = await session.execute(select(User).where((User.username == username) | (User.email == email)))
     if existing.scalar_one_or_none():
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Имя пользователя или email уже заняты"
-        })
-
-    # Создаём админа (регистрируются как ADMIN по умолчанию)
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Имя пользователя или email уже заняты"})
     new_user = User(
         username=username,
         email=email,
         hashed_password=get_password_hash(password),
         is_active=True,
-        role=UserRole.ADMIN.value,        # именно .value = "admin"
+        role=UserRole.ADMIN.value,
         registration_date=datetime.utcnow().date(),
     )
     session.add(new_user)
     await session.commit()
-
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
 
 # ─── Регистрация через Telegram-бота ────────────────────────────────────────────
 @router.post("/telegram/register")
@@ -186,11 +197,9 @@ async def telegram_register(
     username: str = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
-    # Если уже есть, просто возвращаем ОК
     existing = await session.execute(select(User).where(User.telegram_id == telegram_id))
     if existing.scalar_one_or_none():
         return {"status": "already_registered"}
-
     new_emp = User(
         telegram_id=telegram_id,
         first_name=first_name,

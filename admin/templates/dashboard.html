@@ -1,39 +1,21 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-4">
-    <h1>Панель управления</h1>
-    
-    <div class="row mt-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Тесты</h5>
-                    <p class="card-text">Управление тестами и вопросами</p>
-                    <a href="/tests" class="btn btn-primary">Перейти</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Пользователи</h5>
-                    <p class="card-text">Управление пользователями и ролями</p>
-                    <a href="/users" class="btn btn-primary">Перейти</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Статистика</h5>
-                    <p class="card-text">Просмотр статистики и отчетов</p>
-                    <a href="/stats" class="btn btn-primary">Перейти</a>
-                </div>
-            </div>
-        </div>
-    </div>
+  <h1>Панель управления, {{ user.username }}</h1>
+
+  <h3 class="mt-4">Недавние тесты</h3>
+  <ul class="list-group mb-4">
+    {% for t in recent_tests %}
+      <li class="list-group-item">
+        <a href="/tests/{{ t.id }}">{{ t.title }}</a>
+      </li>
+    {% else %}
+      <li class="list-group-item">Нет тестов</li>
+    {% endfor %}
+  </ul>
+
+  <div class="row">
+    <!-- ваши карточки -->
+  </div>
 </div>
-{% endblock %} 
+{% endblock %}
