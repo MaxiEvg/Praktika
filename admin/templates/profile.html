@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>Профиль</h1>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">{{ user.username }}</h5>
+      <p class="card-text"><strong>Имя:</strong> {{ user.full_name }}</p>
+      <p class="card-text"><strong>Email:</strong> {{ user.email }}</p>
+      <p class="card-text"><strong>Роль:</strong> {{ user.role or 'Сотрудник' }}</p>
+      <p class="card-text"><strong>Отдел:</strong> {{ user.department or 'Не выбран' }}</p>
+      <p class="card-text"><strong>Должность:</strong> {{ user.position or 'Не выбрана' }}</p>
+      <a href="/profile/edit" class="btn btn-primary">Редактировать профиль</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

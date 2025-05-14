@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h1>Редактирование профиля</h1>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" action="/profile/update">
+                <div class="mb-3">
+                    <label for="first_name" class="form-label">Имя</label>
+                    <input type="text"
+                           class="form-control"
+                           id="first_name"
+                           name="first_name"
+                           value="{{ user.first_name or '' }}"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="last_name" class="form-label">Фамилия</label>
+                    <input type="text"
+                           class="form-control"
+                           id="last_name"
+                           name="last_name"
+                           value="{{ user.last_name or '' }}"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email"
+                           class="form-control"
+                           id="email"
+                           name="email"
+                           value="{{ user.email or '' }}"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="department_id" class="form-label">Отдел</label>
+                    <select class="form-select"
+                            id="department_id"
+                            name="department_id">
+                        <option value="">Не выбран</option>
+                        {% for department in departments %}
+                            <option value="{{ department.id }}"
+                                {% if user.department_id == department.id %}selected{% endif %}>
+                                {{ department.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="mt-2">
+                        <label for="new_department" class="form-label">Добавить новый отдел</label>
+                        <input type="text"
+                               class="form-control"
+                               id="new_department"
+                               name="new_department"
+                               placeholder="Введите название нового отдела">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="position_id" class="form-label">Должность</label>
+                    <select class="form-select"
+                            id="position_id"
+                            name="position_id">
+                        <option value="">Не выбрана</option>
+                        {% for position in positions %}
+                            <option value="{{ position.id }}"
+                                {% if user.position_id == position.id %}selected{% endif %}>
+                                {{ position.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="mt-2">
+                        <label for="new_position" class="form-label">Добавить новую должность</label>
+                        <input type="text"
+                               class="form-control"
+                               id="new_position"
+                               name="new_position"
+                               placeholder="Введите название новой должности">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    <a href="/profile" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

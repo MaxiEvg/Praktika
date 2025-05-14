@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 class RunConfig(BaseModel):
-    host: str = "0.0.0.0"
+    host: str = "localhost"
     port: int = 8080
 
 class ApiPrefix(BaseModel):
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     api_base_url: str
     
     # Server settings
-    host: str = "0.0.0.0"
+    host: str = "localhost"
     port: int = 8080
     
     # Logging settings
