@@ -42,47 +42,67 @@ class DatabaseService:
             logger.error(f"API request failed: {str(e)}")
             raise APIError(f"API request failed: {str(e)}")
     
+    def get_materials(self, category: Optional[str] = None) -> List[Dict]:
+        """Get materials from database"""
+        endpoint = '/content'
+        if category:
+            endpoint += f'?category={category}'
+        return self._make_request('GET', endpoint)
+    
+    def get_lectures(self) -> List[Dict]:
+        """Get all lectures from database"""
+        return self._make_request('GET', '/content?type=lecture')
+    
+    def get_tests(self) -> List[Dict]:
+        """Get all tests from database"""
+        return self._make_request('GET', '/content?type=test')
+    
+    def get_adaptation_plan(self, user_id: int) -> Dict:
+        """Get user's adaptation plan"""
+        return self._make_request('GET', f'/adaptation/plan/{user_id}')
+    
+    def get_progress(self, user_id: int) -> Dict:
+        """Get user's progress"""
+        return self._make_request('GET', f'/adaptation/progress/{user_id}')
+    
+    def save_feedback(self, user_id: int, feedback_text: str) -> None:
+        """Save user feedback"""
+        self._make_request('POST', '/adaptation/feedback', {
+            'user_id': user_id,
+            'feedback_text': feedback_text,
+            'created_at': datetime.now().isoformat()
+        })
+    
     def save_question(self, user_id: int, question_text: str) -> None:
-        """Save user question via API"""
-        self._make_request('POST', '/questions', {
+        """Save user question"""
+        self._make_request('POST', '/adaptation/questions', {
             'user_id': user_id,
             'question_text': question_text,
             'created_at': datetime.now().isoformat()
         })
     
     def save_document(self, user_id: int, file_id: str, file_name: str) -> None:
-        """Save document info via API"""
-        self._make_request('POST', '/documents', {
+        """Save document info"""
+        self._make_request('POST', '/adaptation/documents', {
             'user_id': user_id,
             'file_id': file_id,
             'file_name': file_name,
             'uploaded_at': datetime.now().isoformat()
         })
     
-    def get_test_questions(self, limit: int = 5) -> List[Dict]:
-        """Get test questions via API"""
-        return self._make_request('GET', f'/test-questions?limit={limit}')
+    def get_test_questions(self, test_id: int) -> List[Dict]:
+        """Get test questions"""
+        return self._make_request('GET', f'/content/{test_id}/questions')
     
-    def save_test_result(self, user_id: int, score: int, total: int) -> None:
-        """Save test result via API"""
-        self._make_request('POST', '/test-results', {
+    def save_test_result(self, user_id: int, test_id: int, score: int, total: int) -> None:
+        """Save test result"""
+        self._make_request('POST', '/adaptation/test-results', {
             'user_id': user_id,
+            'test_id': test_id,
             'score': score,
             'total_questions': total,
             'completion_time': datetime.now().isoformat()
         })
-
-    def get_materials(self) -> List[Dict]:
-        """Get all materials from database"""
-        return self._make_request('GET', '/materials')
-    
-    def get_lectures(self) -> List[Dict]:
-        """Get all lectures from database"""
-        return self._make_request('GET', '/lectures')
-    
-    def get_tests(self) -> List[Dict]:
-        """Get all tests from database"""
-        return self._make_request('GET', '/tests')
 
 # Initialize services
 db_service = DatabaseService(Config.API_BASE_URL)
@@ -146,11 +166,11 @@ def get_welcome_message() -> str:
 Если у тебя возникнут вопросы,
 всегда можешь к HR. 🚀"""
 
-def get_section_message(section: str) -> str:
+def get_section_message(section: str, user_id: int) -> str:
     """Get formatted message for specific section with dynamic content"""
     try:
         if section == 'internship':
-            materials = db_service.get_materials()
+            materials = db_service.get_materials(category='internship')
             lectures = db_service.get_lectures()
             tests = db_service.get_tests()
             
@@ -162,32 +182,58 @@ def get_section_message(section: str) -> str:
                 message += "\n📖 Материалы:\n"
                 for material in materials:
                     message += f"- {material['title']}\n"
+                    if material.get('description'):
+                        message += f"  {material['description']}\n"
             
             if lectures:
                 message += "\n🎥 Лекции:\n"
                 for lecture in lectures:
                     message += f"- {lecture['title']}\n"
+                    if lecture.get('description'):
+                        message += f"  {lecture['description']}\n"
             
             if tests:
                 message += "\n📝 Тесты:\n"
                 for test in tests:
                     message += f"- {test['title']}\n"
+                    if test.get('description'):
+                        message += f"  {test['description']}\n"
             
             message += "\nВыбери интересующий раздел:"
             return message
             
         elif section == 'company_info':
-            materials = db_service.get_materials()
+            materials = db_service.get_materials(category='company_info')
             message = """📅 Знакомство с компанией
 
 Доступные материалы:
 """
             if materials:
                 for material in materials:
-                    if material.get('category') == 'company_info':
-                        message += f"- {material['title']}\n"
+                    message += f"- {material['title']}\n"
+                    if material.get('description'):
+                        message += f"  {material['description']}\n"
             
             message += "\nПосле изучения пройди тест"
+            return message
+            
+        elif section == 'adaptation':
+            plan = db_service.get_adaptation_plan(user_id)
+            progress = db_service.get_progress(user_id)
+            
+            message = """📋 План адаптации
+
+Ваш план:
+"""
+            if plan:
+                for step in plan.get('steps', []):
+                    message += f"- {step['title']}\n"
+                    if step.get('description'):
+                        message += f"  {step['description']}\n"
+            
+            if progress:
+                message += f"\nПрогресс: {progress['completed_steps']}/{progress['total_steps']} шагов"
+            
             return message
             
         else:
@@ -235,13 +281,13 @@ def callback_handler(call):
             logger.info(f"User {call.from_user.id} accessed section: {call.data}")
             markup = create_menu_markup(call.data)
             try:
-                message = get_section_message(call.data)
+                message = get_section_message(call.data, call.from_user.id)
                 bot.edit_message_text(
                     message,
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                reply_markup=markup
-            )
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    reply_markup=markup
+                )
             except APIError as e:
                 logger.error(f"Error getting section content: {str(e)}")
                 bot.edit_message_text(
@@ -348,6 +394,7 @@ def callback_handler(call):
                     # Save results via API
                     db_service.save_test_result(
                         user_id=call.from_user.id,
+                        test_id=state['questions'][0]['test_id'],
                         score=score,
                         total=len(state['questions'])
                     )
