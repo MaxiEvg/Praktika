@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>Прогресс пользователя {{ user_id }} по плану {{ plan_id }}</h1>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Этап</th>
+        <th>Статус</th>
+        <th>Дата завершения</th>
+        <th>Заметки</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in progress %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ p.stage.title }}</td>
+          <td>{{ p.status.value }}</td>
+          <td>{{ p.completion_date or '-' }}</td>
+          <td>{{ p.notes or '-' }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="5">Прогресс не найден.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{{ url_for('list_users') }}" class="btn btn-secondary">Назад к списку</a>
+</div>
+{% endblock %}

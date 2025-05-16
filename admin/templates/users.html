@@ -1,113 +1,88 @@
 {% extends "base.html" %}
- 
- {% block content %}
- <div class="container mt-4">
-     <div class="d-flex justify-content-between align-items-center mb-4">
-         <h1>Управление пользователями</h1>
-         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-             Добавить пользователя
-         </button>
-     </div>
-     
-     <div class="card">
-         <div class="card-body">
-             <div class="table-responsive">
-                 <table class="table">
-                     <thead>
-                         <tr>
-                             <th>ID</th>
-                             <th>Имя пользователя</th>
-                             <th>Email</th>
-                             <th>Роль</th>
-                             <th>Статус</th>
-                             <th>Действия</th>
-                         </tr>
-                     </thead>
-                     <tbody>
-                         {% for user in users %}
-                         <tr>
-                             <td>{{ user.id }}</td>
-                             <td>{{ user.username }}</td>
-                             <td>{{ user.email }}</td>
-                             <td>
-                                 <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}">
-                                     {{ user.role }}
-                                 </span>
-                             </td>
-                             <td>
-                                 <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                     {{ 'Активен' if user.is_active else 'Неактивен' }}
-                                 </span>
-                             </td>
-                             <td>
-                                 <div class="btn-group">
-                                     <button type="button" class="btn btn-sm btn-outline-primary" 
-                                             onclick="editUser('{{ user.id }}')">
-                                         <i class="bi bi-pencil"></i>
-                                     </button>
-                                     <button type="button" class="btn btn-sm btn-outline-danger" 
-                                             onclick="deleteUser('{{ user.id }}')">
-                                         <i class="bi bi-trash"></i>
-                                     </button>
-                                 </div>
-                             </td>
-                         </tr>
-                         {% endfor %}
-                     </tbody>
-                 </table>
-             </div>
-         </div>
-     </div>
- </div>
- 
- <!-- Modal для добавления пользователя -->
- <div class="modal fade" id="addUserModal" tabindex="-1">
-     <div class="modal-dialog">
-         <div class="modal-content">
-             <div class="modal-header">
-                 <h5 class="modal-title">Добавить пользователя</h5>
-                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-             </div>
-             <form method="POST" action="/users/create">
-                 <div class="modal-body">
-                     <div class="mb-3">
-                         <label for="username" class="form-label">Имя пользователя</label>
-                         <input type="text" class="form-control" id="username" name="username" required>
-                     </div>
-                     <div class="mb-3">
-                         <label for="email" class="form-label">Email</label>
-                         <input type="email" class="form-control" id="email" name="email" required>
-                     </div>
-                     <div class="mb-3">
-                         <label for="role" class="form-label">Роль</label>
-                         <select class="form-select" id="role" name="role" required>
-                             <option value="user">Пользователь</option>
-                             <option value="admin">Администратор</option>
-                         </select>
-                     </div>
-                 </div>
-                 <div class="modal-footer">
-                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                     <button type="submit" class="btn btn-primary">Добавить</button>
-                 </div>
-             </form>
-         </div>
-     </div>
- </div>
- 
- {% block scripts %}
- <script>
- function editUser(userId) {
-     // TODO: Implement edit user functionality
-     console.log('Edit user:', userId);
- }
- 
- function deleteUser(userId) {
-     if (confirm('Вы уверены, что хотите удалить этого пользователя?')) {
-         // TODO: Implement delete user functionality
-         console.log('Delete user:', userId);
-     }
- }
- </script>
- {% endblock %}
- {% endblock %} 
+{% block content %}
+<div class="container mt-5">
+  <h1>Пользователи</h1>
+
+  <div class="mb-3">
+    <label for="userSelect" class="form-label">Выберите пользователя:</label>
+    <select id="userSelect" class="form-select">
+      <option value="" selected disabled>-- выбор --</option>
+      {% for u in employees %}
+        <option value="{{ u.id }}">{{ u.last_name }} {{ u.first_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div id="userInfo" class="card mb-3" style="display:none;">
+    <div class="card-body">
+      <h5 class="card-title" id="infoName"></h5>
+      <p><strong>Email:</strong> <span id="infoEmail"></span></p>
+      <p><strong>Департамент:</strong> <span id="infoDept"></span></p>
+      <p><strong>Позиция:</strong> <span id="infoPos"></span></p>
+    </div>
+  </div>
+
+  <button id="addPlanBtn" class="btn btn-primary mb-3" style="display:none;">
+    Назначить план
+  </button>
+
+  <div id="planSection" style="display:none;">
+    <h3>Адаптационные планы</h3>
+    <ul class="list-group" id="planList"></ul>
+  </div>
+</div>
+
+<script>
+  const users = {{ employees_json|tojson }};
+  let selectedId = null;
+
+  const select = document.getElementById('userSelect'),
+        infoCard = document.getElementById('userInfo'),
+        infoName = document.getElementById('infoName'),
+        infoEmail = document.getElementById('infoEmail'),
+        infoDept  = document.getElementById('infoDept'),
+        infoPos   = document.getElementById('infoPos'),
+        addBtn    = document.getElementById('addPlanBtn'),
+        planSect  = document.getElementById('planSection'),
+        planList  = document.getElementById('planList');
+
+  select.addEventListener('change', () => {
+    selectedId = +select.value;
+    const u = users.find(x => x.id === selectedId);
+    if (!u) return;
+
+    infoName.textContent  = u.last_name + ' ' + u.first_name;
+    infoEmail.textContent = u.email || '-';
+    infoDept.textContent  = u.department || '-';
+    infoPos.textContent   = u.position || '-';
+
+    infoCard.style.display = 'block';
+    addBtn.style.display   = 'inline-block';
+    planSect.style.display = 'block';
+
+    // render plans
+    planList.innerHTML = '';
+    if (!u.plans.length) {
+      planList.innerHTML = '<li class="list-group-item">Нет планов</li>';
+    } else {
+      u.plans.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between';
+        li.textContent = p.name;
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-secondary';
+        btn.textContent = 'Прогресс';
+        btn.onclick = () => location.href = `/users/${selectedId}/progress/${p.id}`;
+        li.appendChild(btn);
+        planList.appendChild(li);
+      });
+    }
+  });
+
+  addBtn.addEventListener('click', () => {
+    if (selectedId) {
+      location.href = `/users/${selectedId}/plans/add`;
+    }
+  });
+</script>
+{% endblock %}

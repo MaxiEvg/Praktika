@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>Назначить план пользователю {{ user_id }}</h1>
+  <form method="post" action="{{ url_for('assign_plan', user_id=user_id) }}">
+    <div class="mb-3">
+      <label for="planSelect" class="form-label">Выберите план:</label>
+      <select id="planSelect" name="plan_id" class="form-select" required>
+        <option value="" selected disabled>-- выбор плана --</option>
+        {% for p in plans %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success">Назначить</button>
+    <a href="{{ url_for('list_users') }}" class="btn btn-secondary">Отмена</a>
+  </form>
+</div>
+{% endblock %}
