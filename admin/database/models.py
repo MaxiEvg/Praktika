@@ -111,6 +111,10 @@ class AdaptationStage(Base):
         foreign_keys=[test_id],
         lazy="selectin"
     )
+    adaptation_progress: Mapped[List["UserAdaptationProgress"]] = relationship(
+        back_populates="stage",
+        cascade="all, delete-orphan"
+    )
 
 
 class UserAdaptationProgress(Base):
@@ -123,7 +127,7 @@ class UserAdaptationProgress(Base):
     completion_date: Mapped[Optional[date]]
     notes: Mapped[Optional[str]]
     user: Mapped["User"] = relationship(back_populates="adaptation_progress")
-
+    stage: Mapped["AdaptationStage"] = relationship(back_populates="adaptation_progress")
 
 class ContentMaterial(Base):
     __tablename__ = 'content_material'

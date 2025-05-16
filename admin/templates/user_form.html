@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1>{{ user and "Редактировать сотрудника" or "Создать сотрудника" }}</h1>
+
+  {# Показать ошибку, если передали #}
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="{{ action_url }}">
+    {# При редактировании передаём id #}
+    {% if user %}
+      <input type="hidden" name="user_id" value="{{ user.id }}">
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="first_name" class="form-label">Имя</label>
+      <input id="first_name" name="first_name" type="text"
+             class="form-control"
+             value="{{ user.first_name if user else '' }}"
+             required>
+    </div>
+
+    <div class="mb-3">
+      <label for="last_name" class="form-label">Фамилия</label>
+      <input id="last_name" name="last_name" type="text"
+             class="form-control"
+             value="{{ user.last_name if user else '' }}"
+             required>
+    </div>
+
+    <div class="mb-3">
+      <label for="username" class="form-label">Логин</label>
+      <input id="username" name="username" type="text"
+             class="form-control"
+             value="{{ user.username if user else '' }}"
+             required>
+    </div>
+
+    <div class="mb-3">
+      <label for="email" class="form-label">E‑mail</label>
+      <input id="email" name="email" type="email"
+             class="form-control"
+             value="{{ user.email if user else '' }}"
+             required>
+    </div>
+
+    {# При создании задаём пароль #}
+    {% if not user %}
+      <div class="mb-3">
+        <label for="password" class="form-label">Пароль</label>
+        <input id="password" name="password" type="password"
+               class="form-control" required>
+      </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="department_id" class="form-label">Департамент</label>
+      <select id="department_id" name="department_id" class="form-select">
+        <option value="">— не выбрано —</option>
+        {% for d in departments %}
+          <option value="{{ d.id }}"
+            {% if user and user.department_id == d.id %}selected{% endif %}>
+            {{ d.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="position_id" class="form-label">Позиция</label>
+      <select id="position_id" name="position_id" class="form-select">
+        <option value="">— не выбрано —</option>
+        {% for p in positions %}
+          <option value="{{ p.id }}"
+            {% if user and user.position_id == p.id %}selected{% endif %}>
+            {{ p.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-success">
+      {{ user and "Сохранить" or "Создать" }}
+    </button>
+    <a href="{{ url_for('list_users') }}" class="btn btn-secondary">Отмена</a>
+  </form>
+</div>
+{% endblock %}

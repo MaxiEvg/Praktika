@@ -1,10 +1,12 @@
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import (
     APIRouter, Depends, Request,
     HTTPException, Form, status
 )
+from passlib.context import CryptContext
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +23,13 @@ from db_helper import db_helper
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Users"])
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 async def get_session() -> AsyncSession:
     async with db_helper.session_factory() as session:
         yield session
+
 
 # — PROFILE — #
 @router.get("/profile", response_class=HTMLResponse, name="user_profile")
@@ -60,6 +65,8 @@ async def get_profile(
         }
     )
 
+
+# — EDIT PROFILE — #
 @router.get("/profile/edit", response_class=HTMLResponse, name="edit_profile_form")
 async def edit_profile_form(
     request: Request,
@@ -79,6 +86,7 @@ async def edit_profile_form(
         }
     )
 
+
 @router.post("/profile/update", response_class=RedirectResponse)
 async def update_profile(
     request: Request,
@@ -93,12 +101,10 @@ async def update_profile(
     session:        AsyncSession = Depends(get_session)
 ):
     try:
-        # обновляем поля
-        current_user.first_name = first_name
-        current_user.last_name  = last_name
-        current_user.email      = email
+        current_user.first_name = first_name.strip()
+        current_user.last_name  = last_name.strip()
+        current_user.email      = email.strip()
 
-        # департамент
         if new_department:
             dep = Department(name=new_department.strip())
             session.add(dep)
@@ -110,7 +116,6 @@ async def update_profile(
                 raise HTTPException(status_code=400, detail="Invalid department")
             current_user.department = dep
 
-        # позиция
         if new_position:
             pos = Positions(name=new_position.strip())
             session.add(pos)
@@ -133,6 +138,7 @@ async def update_profile(
 
     return RedirectResponse(url="/profile", status_code=status.HTTP_303_SEE_OTHER)
 
+
 # — LIST USERS — #
 @router.get("/users", response_class=HTMLResponse, name="list_users")
 async def list_users(
@@ -140,26 +146,29 @@ async def list_users(
     current_user: User = Depends(get_current_user_from_cookie),
     session: AsyncSession = Depends(get_session)
 ):
-    # жадная загрузка позиции и её планов
+    # 1) Жадно загрузим department, position, и прогресс с планами:
     stmt = (
         select(User)
         .options(
-            joinedload(User.position)
-            .joinedload(Positions.adaptation_plans)
+            joinedload(User.department),
+            joinedload(User.position),
+            joinedload(User.adaptation_progress)
+              .joinedload(UserAdaptationProgress.stage)
+              .joinedload(AdaptationStage.plan)
         )
         .where(User.role == UserRole.EMPLOYEE)
         .order_by(User.last_name, User.first_name)
     )
     result = await session.execute(stmt)
-    employees: List[User] = result.scalars().all() or []
+    users: List[User] = result.unique().scalars().all()
 
-    # готовим JSON для JS
+    # 2) Собираем JSON так, чтобы планы были именно из прогресса пользователя:
     employees_json: List[Dict[str, Any]] = []
-    for u in employees:
-        plans = []
-        if u.position and u.position.adaptation_plans:
-            for p in u.position.adaptation_plans:
-                plans.append({"id": p.id, "name": p.name})
+    for u in users:
+        # уникальные планы через set()
+        plan_set = { prog.stage.plan for prog in u.adaptation_progress if prog.stage and prog.stage.plan }
+        plans = [{"id": p.id, "name": p.name} for p in plan_set]
+
         employees_json.append({
             "id":         u.id,
             "first_name": u.first_name or "",
@@ -174,13 +183,13 @@ async def list_users(
         "users.html",
         {
             "request":        request,
-            "employees":      employees,
+            "employees":      users,
             "employees_json": employees_json,
             "current_user":   current_user
         }
     )
 
-# — ASSIGN PLAN FORM — #
+# — ASSIGN PLAN — #
 @router.get("/users/{user_id}/plans/add", response_class=HTMLResponse, name="add_plan_to_user_form")
 async def add_plan_form(
     request: Request,
@@ -191,14 +200,12 @@ async def add_plan_form(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can assign plans")
 
-    # получаем все планы
-    result = await session.execute(select(AdaptationPlan).order_by(AdaptationPlan.name))
-    plans = result.scalars().all() or []
-
+    plans = (await session.execute(select(AdaptationPlan).order_by(AdaptationPlan.name))).scalars().all()
     return templates.TemplateResponse(
         "assign_plan.html",
         {"request": request, "user_id": user_id, "plans": plans}
     )
+
 
 @router.post("/users/{user_id}/plans/assign", response_class=RedirectResponse, name="assign_plan")
 async def assign_plan(
@@ -216,17 +223,16 @@ async def assign_plan(
     if not user or not plan:
         raise HTTPException(status_code=404, detail="User or Plan not found")
 
-    # для каждого этапа создаём прогресс
     for stage in plan.stages:
-        prog = UserAdaptationProgress(
+        session.add(UserAdaptationProgress(
             user_id=user_id,
             stage_id=stage.id,
             status=ProgressStatus.PENDING
-        )
-        session.add(prog)
+        ))
     await session.commit()
 
-    return RedirectResponse(url=f"/users", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
+
 
 # — VIEW PROGRESS — #
 @router.get("/users/{user_id}/progress/{plan_id}", response_class=HTMLResponse, name="view_progress")
@@ -237,11 +243,9 @@ async def view_progress(
     current_user: User = Depends(get_current_user_from_cookie),
     session: AsyncSession = Depends(get_session)
 ):
-    # право просмотра: админ или сам пользователь
     if current_user.role != UserRole.ADMIN and current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    # жадная загрузка прогресса и этапов
     stmt = (
         select(UserAdaptationProgress)
         .options(
@@ -251,8 +255,7 @@ async def view_progress(
         .where(UserAdaptationProgress.user_id == user_id)
         .order_by(UserAdaptationProgress.id)
     )
-    result = await session.execute(stmt)
-    progress = result.scalars().all() or []
+    progress = (await session.execute(stmt)).scalars().all()
 
     return templates.TemplateResponse(
         "user_progress.html",
@@ -263,3 +266,90 @@ async def view_progress(
             "plan_id":  plan_id
         }
     )
+
+
+# ─── ADD EMPLOYEE ────────────────────────────────────────────────
+@router.get("/users/add", response_class=HTMLResponse, name="add_employee_form")
+async def add_employee_form(
+    request: Request,
+    current_user: User = Depends(get_current_user_from_cookie),
+    session: AsyncSession = Depends(get_session)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can add employees")
+
+    departments = (await session.execute(select(Department))).scalars().all()
+    positions   = (await session.execute(select(Positions))).scalars().all()
+
+    return templates.TemplateResponse(
+        "user_form.html",
+        {
+            "request":     request,
+            "user":        None,
+            "departments": departments,
+            "positions":   positions,
+            "action_url":  request.url_for("create_employee")
+        }
+    )
+
+
+@router.post("/users/add", response_class=RedirectResponse, name="create_employee")
+async def create_employee(
+    request: Request,
+    first_name: str       = Form(...),
+    last_name: str        = Form(...),
+    username: str         = Form(...),
+    email: str            = Form(...),
+    password: str         = Form(...),
+    department_id: Optional[int] = Form(None),
+    position_id:   Optional[int] = Form(None),
+    current_user:  User         = Depends(get_current_user_from_cookie),
+    session:       AsyncSession = Depends(get_session)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can add employees")
+
+    exists = await session.execute(
+        select(User).where((User.username == username) | (User.email == email))
+    )
+    if exists.scalar_one_or_none():
+        return templates.TemplateResponse(
+            "user_form.html",
+            {
+                "request":     request,
+                "user":        None,
+                "error":       "Username or email already taken",
+                "departments": (await session.execute(select(Department))).scalars().all(),
+                "positions":   (await session.execute(select(Positions))).scalars().all(),
+                "action_url":  request.url_for("create_employee")
+            }
+        )
+
+    hashed = pwd_context.hash(password)
+    new_user = User(
+        first_name=first_name.strip(),
+        last_name=last_name.strip(),
+        username=username.strip(),
+        email=email.strip(),
+        hashed_password=hashed,
+        is_active=True,
+        role=UserRole.EMPLOYEE,
+        registration_date=datetime.utcnow()  # устанавливаем вручную
+    )
+
+    if department_id:
+        dep = await session.get(Department, department_id)
+        if not dep:
+            raise HTTPException(status_code=400, detail="Invalid department")
+        new_user.department = dep
+
+    if position_id:
+        pos = await session.get(Positions, position_id)
+        if not pos:
+            raise HTTPException(status_code=400, detail="Invalid position")
+        new_user.position = pos
+
+    session.add(new_user)
+    await session.commit()
+
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
